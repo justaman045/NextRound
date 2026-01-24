@@ -1,0 +1,22 @@
+{
+    "name": "NextRound - AI Powered Resume Builder",
+    "short_name": "NextRound",
+    "description": "Create ATS-friendly resumes in seconds. Use AI to tailor your resume for any job description.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#8b5cf6",
+    "icons": [
+        {
+            "src": "/icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/favicon.ico",
+            "sizes": "64x64 32x32 24x24 16x16",
+            "type": "image/x-icon"
+        }
+    ]
+}

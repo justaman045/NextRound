@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Check if user is the Admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'developerlife69@gmail.com';
+    }
+    
+    // Helper: Check if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 1. Users Collection & Subcollections
+    // Uses recursive match to cover both the user doc AND 'profile' subcollection
+    match /users/{userId} {
+         allow read, write: if isAuth() && (request.auth.uid == userId || isAdmin());
+         
+         match /{allSubcollections=**} {
+             allow read, write: if isAuth() && (request.auth.uid == userId || isAdmin());
+         }
+    }
+
+    // 2. Templates: Everyone can read; Only Admin can write.
+    match /templates/{templateId} {
+      allow read: if isAuth(); 
+      allow write: if isAdmin();
+    }
+
+    // 3. Waitlist: Public write access.
+    // 3. Waitlist: Public write access.
+    match /waitlist/{email} {
+      allow write: if true;
+      allow read: if isAdmin();
+    }
+    
+    // 4. System Config
+    match /system/config {
+      allow read: if true; 
+      allow write: if isAdmin();
+    }
+    
+    // 5. System Stats
+    match /system/stats {
+      allow read: if isAdmin();
+      allow write: if isAuth(); // Allow users to increment counters
+    }
+  }
+}

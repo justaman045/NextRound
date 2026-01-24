@@ -30,8 +30,27 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Firebase & Secrets
+*service-account.json
+firebase-key.json
+*.p12
+*.key
+*.cert
+
+# playwright & testing
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/coverage
 
 # vercel
 .vercel
