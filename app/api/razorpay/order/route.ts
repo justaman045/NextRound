@@ -1,14 +1,24 @@
 import { NextResponse } from 'next/server';
-import { razorpay } from '@/lib/razorpay';
+import Razorpay from 'razorpay';
 
 export async function POST(req: Request) {
     try {
         const { amount, currency = 'INR', receipt } = await req.json();
 
-        if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-            console.error('Razorpay keys missing from environment');
-            return NextResponse.json({ error: 'Razorpay configuration error: Keys missing in production environment.' }, { status: 500 });
+        const key_id = process.env.RAZORPAY_KEY_ID;
+        const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+        console.log(`[Razorpay Order] Initializing with KeyID: ${key_id?.substring(0, 12)}... and Secret starting with: ${key_secret?.substring(0, 3)}...`);
+
+        if (!key_id || !key_secret || key_id.includes('YourKeyIdHere')) {
+            console.error('Razorpay keys missing or still using placeholders');
+            return NextResponse.json({ error: 'Razorpay configuration error: Valid Keys not found in environment.' }, { status: 500 });
         }
+
+        const razorpay = new Razorpay({
+            key_id: key_id,
+            key_secret: key_secret,
+        });
 
         if (!amount) {
             return NextResponse.json({ error: 'Amount is required' }, { status: 400 });
@@ -25,9 +35,11 @@ export async function POST(req: Request) {
         return NextResponse.json(order);
     } catch (error: any) {
         console.error('Razorpay Order Error Details:', error);
+        // Razorpay SDK errors often nest the descriptive error inside an 'error' property
+        const description = error.error?.description || error.description || error.metadata || 'Unknown error';
         return NextResponse.json({
             error: error.message || 'Failed to create order',
-            details: error.description || error.metadata || 'Unknown error'
+            details: description
         }, { status: 500 });
     }
 }
