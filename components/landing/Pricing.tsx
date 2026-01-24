@@ -1,7 +1,22 @@
 import { Check, X, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { PRICING_CONFIG, getCurrencyFromLocale, Currency, DEFAULT_CURRENCY } from "@/config/pricing";
+import { useState, useEffect } from "react";
 
 export default function Pricing() {
+    const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
+    const { currencies, plans } = PRICING_CONFIG;
+
+    useEffect(() => {
+        // Simple detection based on locale
+        // In a real app, you might use a geolocation API or Cloudflare headers
+        const browserLocale = navigator.language.toUpperCase();
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setCurrency(getCurrencyFromLocale(browserLocale, timeZone));
+    }, []);
+
+    const currencySymbol = currencies[currency].symbol;
+
     return (
         <section className="py-20 px-6 max-w-7xl mx-auto" id="pricing">
             <div className="text-center mb-16 animate-fade-in-up">
@@ -16,21 +31,17 @@ export default function Pricing() {
                 {/* Free Tier */}
                 <div className="p-6 rounded-3xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all flex flex-col animate-fade-in-up delay-100 relative overflow-hidden group">
                     <div className="mb-6">
-                        <h3 className="text-lg font-bold text-gray-200 mb-2">Free Tier</h3>
-                        <div className="text-3xl font-bold text-white mb-2">$0</div>
+                        <h3 className="text-lg font-bold text-gray-200 mb-2">{plans.free.name}</h3>
+                        <div className="text-3xl font-bold text-white mb-2">{currencySymbol}{plans.free.pricing[currency].display}</div>
                         <p className="text-gray-400 text-xs">Forever free.</p>
                     </div>
 
                     <ul className="space-y-3 mb-6 flex-1 text-sm">
-                        <li className="flex items-center gap-3 text-gray-300">
-                            <Check className="w-4 h-4 text-gray-500" /> 1 AI Resume Limit
-                        </li>
-                        <li className="flex items-center gap-3 text-gray-300">
-                            <Check className="w-4 h-4 text-gray-500" /> Basic Template
-                        </li>
-                        <li className="flex items-center gap-3 text-gray-300">
-                            <Check className="w-4 h-4 text-gray-500" /> PDF Export
-                        </li>
+                        {plans.free.features.map((feature, i) => (
+                            <li key={i} className="flex items-center gap-3 text-gray-300">
+                                <Check className="w-4 h-4 text-gray-500" /> {feature}
+                            </li>
+                        ))}
                     </ul>
 
                     <Link
@@ -44,21 +55,17 @@ export default function Pricing() {
                 {/* Pro Monthly */}
                 <div className="p-6 rounded-3xl border border-purple-500/30 bg-purple-900/10 hover:bg-purple-900/20 transition-all flex flex-col animate-fade-in-up delay-200 relative overflow-hidden group">
                     <div className="mb-6">
-                        <h3 className="text-lg font-bold text-white mb-2">Pro Monthly</h3>
-                        <div className="text-3xl font-bold text-white mb-2">$9<span className="text-sm font-normal text-gray-400">/mo</span></div>
+                        <h3 className="text-lg font-bold text-white mb-2">{plans.pro.name}</h3>
+                        <div className="text-3xl font-bold text-white mb-2">{currencySymbol}{plans.pro.pricing[currency].display}<span className="text-sm font-normal text-gray-400">/{plans.pro.billingInterval}</span></div>
                         <p className="text-gray-400 text-xs">Cancel anytime.</p>
                     </div>
 
                     <ul className="space-y-3 mb-6 flex-1 text-sm">
-                        <li className="flex items-center gap-3 text-white">
-                            <Check className="w-4 h-4 text-purple-400" /> Unlimited AI Resumes
-                        </li>
-                        <li className="flex items-center gap-3 text-white">
-                            <Check className="w-4 h-4 text-purple-400" /> All Premium Templates
-                        </li>
-                        <li className="flex items-center gap-3 text-white">
-                            <Check className="w-4 h-4 text-purple-400" /> Advanced AI Actions
-                        </li>
+                        {plans.pro.features.map((feature, i) => (
+                            <li key={i} className="flex items-center gap-3 text-white">
+                                <Check className="w-4 h-4 text-purple-400" /> {feature}
+                            </li>
+                        ))}
                     </ul>
 
                     <button className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all text-sm shadow-lg shadow-purple-900/20">
@@ -74,27 +81,19 @@ export default function Pricing() {
 
                     <div className="mb-6">
                         <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-lg font-bold text-white">Pro Saver</h3>
+                            <h3 className="text-lg font-bold text-white">{plans.pro_saver.name}</h3>
                             <Sparkles className="w-4 h-4 text-blue-400 animate-pulse" />
                         </div>
-                        {/* 29/6 = 4.83 */}
-                        <div className="text-3xl font-bold text-white mb-1">$29<span className="text-sm font-normal text-gray-400">/6 mo</span></div>
-                        <p className="text-blue-200/70 text-xs">Equals <strong>$4.83/mo</strong>. Huge savings!</p>
+                        <div className="text-3xl font-bold text-white mb-1">{currencySymbol}{plans.pro_saver.pricing[currency].display}<span className="text-sm font-normal text-gray-400">/{plans.pro_saver.billingInterval}</span></div>
+                        <p className="text-blue-200/70 text-xs">Equals <strong>{currencySymbol}{plans.pro_saver.pricing[currency].monthlyEquivalent}/mo</strong>. Huge savings!</p>
                     </div>
 
                     <ul className="space-y-3 mb-6 flex-1 text-sm">
-                        <li className="flex items-center gap-3 text-white">
-                            <Check className="w-4 h-4 text-blue-400" /> <strong>Everything in Pro</strong>
-                        </li>
-                        <li className="flex items-center gap-3 text-white">
-                            <Check className="w-4 h-4 text-blue-400" /> Priority Support
-                        </li>
-                        <li className="flex items-center gap-3 text-white">
-                            <Check className="w-4 h-4 text-blue-400" /> LinkedIn Import
-                        </li>
-                        <li className="flex items-center gap-3 text-white">
-                            <Check className="w-4 h-4 text-blue-400" /> Cover Letter AI
-                        </li>
+                        {plans.pro_saver.features.map((feature, i) => (
+                            <li key={i} className="flex items-center gap-3 text-white">
+                                <Check className="w-4 h-4 text-blue-400" /> {i === 0 ? <strong>{feature}</strong> : feature}
+                            </li>
+                        ))}
                     </ul>
 
                     <button className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:shadow-lg hover:shadow-blue-500/25 transition-all text-sm">
