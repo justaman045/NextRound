@@ -38,8 +38,9 @@ export default function SubscriptionView({ subscription }: SubscriptionViewProps
                 window.location.reload();
             } else {
                 // Determine amount and currency
-                const amount = planType === 'pro' ? 9 : 29;
-                const currency = 'USD'; // Razorpay supports USD too!
+                // Using INR as default for better compatibility with Indian Razorpay accounts
+                const amount = planType === 'pro' ? 799 : 2499;
+                const currency = 'INR';
 
                 // 1. Create Order on Backend
                 const orderRes = await fetch('/api/razorpay/order', {
@@ -49,7 +50,11 @@ export default function SubscriptionView({ subscription }: SubscriptionViewProps
                 });
 
                 const orderData = await orderRes.json();
-                if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order');
+                if (!orderRes.ok) {
+                    const errorMsg = orderData.error || 'Failed to create order';
+                    const details = orderData.details ? ` (${orderData.details})` : '';
+                    throw new Error(`${errorMsg}${details}`);
+                }
 
                 // 2. Open Razorpay Checktout
                 const options = {

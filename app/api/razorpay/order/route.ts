@@ -5,6 +5,11 @@ export async function POST(req: Request) {
     try {
         const { amount, currency = 'INR', receipt } = await req.json();
 
+        if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+            console.error('Razorpay keys missing from environment');
+            return NextResponse.json({ error: 'Razorpay configuration error: Keys missing in production environment.' }, { status: 500 });
+        }
+
         if (!amount) {
             return NextResponse.json({ error: 'Amount is required' }, { status: 400 });
         }
@@ -19,7 +24,10 @@ export async function POST(req: Request) {
 
         return NextResponse.json(order);
     } catch (error: any) {
-        console.error('Razorpay Order Error:', error);
-        return NextResponse.json({ error: error.message || 'Failed to create order' }, { status: 500 });
+        console.error('Razorpay Order Error Details:', error);
+        return NextResponse.json({
+            error: error.message || 'Failed to create order',
+            details: error.description || error.metadata || 'Unknown error'
+        }, { status: 500 });
     }
 }
