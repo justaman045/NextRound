@@ -145,6 +145,16 @@ export default function DashboardPage() {
         }
     };
 
+    if (authLoading || loadingData) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-black text-white">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+        );
+    }
+
+    if (!profile) return null;
+
     return (
         <div className="min-h-screen bg-black text-white flex flex-col md:flex-row overflow-hidden relative font-sans selection:bg-purple-500/30">
 
