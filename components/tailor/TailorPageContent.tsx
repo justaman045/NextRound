@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Sidebar from "@/components/dashboard/Sidebar";
+import PageBreaks from "@/components/dashboard/PageBreaks";
 
 // Map component keys (from Firestore) to actual React Components
 const TEMPLATE_MAP: Record<string, React.FC<{ data: UserProfile }>> = {
@@ -47,6 +48,11 @@ export default function TailorPage() {
     // Resume Management
     const [resumeTitle, setResumeTitle] = useState("");
     const [userResumes, setUserResumes] = useState<UserResume[]>([]);
+
+    // Page Length Control
+    const [pageLength, setPageLength] = useState<"1" | "2">("1");
+    // Density Control (Standard vs Compact)
+    const [isCompact, setIsCompact] = useState(false);
 
     // Template State
     const [templates, setTemplates] = useState<Template[]>([]);
@@ -210,9 +216,10 @@ export default function TailorPage() {
         try {
             posthog.capture('resume_generation_started', {
                 model: selectedModel,
-                template: selectedTemplateId
+                template: selectedTemplateId,
+                pageLength
             });
-            const result = await tailorResume(masterProfile, jobDescription, selectedModel);
+            const result = await tailorResume(masterProfile, jobDescription, selectedModel, pageLength);
             const finalProfile = {
                 ...masterProfile,
                 ...result,
@@ -237,7 +244,7 @@ export default function TailorPage() {
                 title: titleToUse,
                 templateId: selectedTemplateId || "modern",
                 createdAt: new Date().toISOString(),
-                score: 85 + Math.floor(Math.random() * 10), // Mock score
+                score: 95 + Math.floor(Math.random() * 5), // Mock score (High Match)
                 jobDescription: jobDescription.substring(0, 100) + "...",
                 thumbnailUrl: "",
                 pdfUrl: "",
@@ -252,7 +259,8 @@ export default function TailorPage() {
             posthog.capture('resume_generated', {
                 resume_id: newResumeId,
                 template: selectedTemplateId,
-                model: selectedModel
+                model: selectedModel,
+                pageLength
             });
 
             // Update local list - always append since we blocked if over limit
@@ -368,6 +376,8 @@ export default function TailorPage() {
                                         disabled={generating}
                                     />
 
+
+
                                     <div>
                                         <label className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2 block">Resume Name</label>
                                         <div className="relative">
@@ -425,7 +435,7 @@ export default function TailorPage() {
                                     )}
                                 </div>
 
-                                {tailoredProfile && templates.length > 0 && (
+                                {templates.length > 0 && (
                                     <div className="mb-4">
                                         <TemplateSelector
                                             templates={templates}
@@ -435,37 +445,53 @@ export default function TailorPage() {
                                     </div>
                                 )}
 
-                                <div className="flex-1 bg-black/40 rounded-xl relative overflow-hidden flex items-center justify-center border border-white/5">
-                                    {tailoredProfile ? (
-                                        <>
-                                            {generatingPdf && (
-                                                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
-                                                    <Loader2 className="animate-spin w-12 h-12 text-purple-500 mb-4" />
-                                                    <span className="text-white font-bold animate-pulse">Designing PDF...</span>
-                                                </div>
-                                            )}
-                                            {pdfUrl ? (
-                                                <iframe
-                                                    src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`}
-                                                    className="w-full h-full rounded-lg shadow-2xl"
-                                                    title="Resume Preview"
-                                                />
-                                            ) : (
-                                                <div className="scale-[0.6] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white">
-                                                    <div ref={contentRef}>
-                                                        <SelectedComponent data={tailoredProfile} />
+                                <div className="flex-1 bg-black/40 rounded-xl relative overflow-y-auto border border-white/5">
+                                    <div className="min-h-full flex flex-col items-center justify-center py-8">
+                                        {/* Preview Content */}
+                                        {(tailoredProfile || masterProfile) ? (
+                                            <>
+                                                {/* Status overlay for Preview Mode */}
+                                                {!tailoredProfile && (
+                                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3 py-1 bg-blue-500/90 text-white text-xs font-bold rounded-full shadow-lg backdrop-blur-md flex items-center gap-2 pointer-events-none">
+                                                        <Sparkles className="w-3 h-3" /> Live Template Preview (Master Data)
                                                     </div>
+                                                )}
+
+                                                {generatingPdf && (
+                                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
+                                                        <Loader2 className="animate-spin w-12 h-12 text-purple-500 mb-4" />
+                                                        <span className="text-white font-bold animate-pulse">Designing PDF...</span>
+                                                    </div>
+                                                )}
+                                                {pdfUrl ? (
+                                                    <iframe
+                                                        src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`}
+                                                        className="w-full h-full rounded-lg shadow-2xl"
+                                                        title="Resume Preview"
+                                                    />
+                                                ) : (
+                                                    <div className="scale-[0.6] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white">
+                                                        <div ref={contentRef} className="relative" style={{ width: '210mm', minHeight: '297mm' }}>
+                                                            <PageBreaks contentRef={contentRef} scale={1} />
+                                                            {/* Use tailoredProfile if available, else masterProfile for preview */}
+                                                            <SelectedComponent
+                                                                data={(tailoredProfile || masterProfile) as UserProfile}
+                                                                isCompact={isCompact}
+                                                                enablePagination={pageLength === "2"}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div className="text-center text-gray-500 py-20">
+                                                <div className="w-20 h-24 mx-auto mb-4 rounded border-2 border-dashed border-gray-700 bg-white/5 flex items-center justify-center">
+                                                    <Layout className="w-8 h-8 text-gray-700" />
                                                 </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <div className="text-center text-gray-500 py-20">
-                                            <div className="w-20 h-24 mx-auto mb-4 rounded border-2 border-dashed border-gray-700 bg-white/5 flex items-center justify-center">
-                                                <Layout className="w-8 h-8 text-gray-700" />
+                                                <p className="text-sm">Loading preview...</p>
                                             </div>
-                                            <p className="text-sm">Your AI-tailored resume will appear here.</p>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -50,13 +50,13 @@ export default function Overview({ profile, stats, recentResumes, subscription, 
                     <div className="relative z-10">
                         <h2 className="text-3xl font-bold text-white mb-2">Welcome back, {firstName}! 🚀</h2>
                         <p className="text-purple-100 max-w-xl">
-                            {profile.experience?.length
+                            {profile?.experience?.length
                                 ? "Tailor your resume for your next dream job in seconds."
                                 : "Let's build your master profile first. Add your experience to get started."}
                         </p>
 
                         <div className="flex gap-4 mt-6">
-                            {profile.experience?.length ? (
+                            {profile?.experience?.length ? (
                                 <Link
                                     href="/tailor"
                                     className="inline-flex items-center gap-2 bg-white text-purple-700 px-6 py-3 rounded-xl font-bold hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"

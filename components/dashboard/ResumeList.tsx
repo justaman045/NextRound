@@ -1,33 +1,86 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { UserResume, Template } from "@/types";
-import { FileText, MoreVertical, Download, Trash2, Calendar, Loader2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { UserResume, Template, UserProfile } from "@/types";
+import { FileText, MoreVertical, Download, Trash2, Calendar, Loader2, X, Sparkles, PenTool } from "lucide-react";
 import { getUserResumes, deleteUserResume } from "@/lib/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { doc, getDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useReactToPrint } from "react-to-print";
+import TemplateSelector from "@/components/tailor/TemplateSelector";
+
+// Templates
+import ModernTemplate from "@/components/templates/ModernTemplate";
+import MinimalistTemplate from "@/components/templates/MinimalistTemplate";
+import CreativeTemplate from "@/components/templates/CreativeTemplate";
+
+const TEMPLATE_MAP: Record<string, React.FC<{ data: UserProfile }>> = {
+    "modern": ModernTemplate,
+    "minimalist": MinimalistTemplate,
+    "creative": CreativeTemplate
+};
 
 export default function ResumeList() {
     const { user } = useAuth();
+    const router = useRouter();
     const [resumes, setResumes] = useState<UserResume[]>([]);
     const [loading, setLoading] = useState(true);
-    const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-    const fetchResumes = async () => {
-        if (!user) return;
-        try {
-            const data = await getUserResumes(user.uid);
-            setResumes(data as UserResume[]);
-        } catch (error) {
-            console.error("Error fetching resumes:", error);
-        } finally {
-            setLoading(false);
+    // Resume to download (selected for the modal)
+    const [resumeToDownload, setResumeToDownload] = useState<UserResume | null>(null);
+    const [downloading, setDownloading] = useState(false);
+
+    // Templates
+    const [templates, setTemplates] = useState<Template[]>([]);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
+    // Printing State
+    const [printingResume, setPrintingResume] = useState<UserResume | null>(null);
+    const [printingTemplateKey, setPrintingTemplateKey] = useState<string | null>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    const reactToPrintFn = useReactToPrint({
+        contentRef,
+        onAfterPrint: () => {
+            setPrintingResume(null);
+            setPrintingTemplateKey(null);
+            setDownloading(false);
+            setResumeToDownload(null);
         }
-    };
+    });
+
+    // Trigger print when resume is ready in the DOM
+    useEffect(() => {
+        if (printingResume && printingTemplateKey && contentRef.current) {
+            setTimeout(() => {
+                reactToPrintFn();
+            }, 500);
+        }
+    }, [printingResume, printingTemplateKey]);
 
     useEffect(() => {
-        fetchResumes();
+        const loadData = async () => {
+            if (!user) return;
+            try {
+                const [resumesData, templatesSnap] = await Promise.all([
+                    getUserResumes(user.uid),
+                    getDocs(collection(db, "templates"))
+                ]);
+
+                setResumes(resumesData as UserResume[]);
+
+                const templateList = templatesSnap.docs
+                    .map(d => ({ id: d.id, ...d.data() } as Template))
+                    .filter(t => t.isActive);
+                setTemplates(templateList);
+
+            } catch (error) {
+                console.error("Error loading data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
     }, [user]);
 
     const handleDelete = async (resumeId: string) => {
@@ -41,57 +94,60 @@ export default function ResumeList() {
         }
     };
 
-    const handleDownload = async (resume: UserResume) => {
+    const handleOpenDownloadModal = (resume: UserResume) => {
         if (!resume.data) {
-            alert("This resume was generated with an older version. Please delete and regenerate it to enable PDF downloading.");
+            alert("This resume is missing data. Please regenerate it.");
             return;
         }
-        setDownloadingId(resume.id);
+        // Set default template selection to the resume's original template if available, else first one
+        setResumeToDownload(resume);
+        setSelectedTemplateId(resume.templateId || templates[0]?.id || null);
+    };
+
+    const confirmDownload = async () => {
+        if (!resumeToDownload || !selectedTemplateId) return;
+        setDownloading(true);
 
         try {
-            // 1. Fetch Template to get files
-            const templateRef = doc(db, "templates", resume.templateId);
-            const templateSnap = await getDoc(templateRef);
+            const template = templates.find(t => t.id === selectedTemplateId);
+            if (!template) throw new Error("Template not found");
 
-            if (!templateSnap.exists()) {
-                throw new Error("Template not found");
+            if (template.type === 'latex' && template.files) {
+                // LATEX DOWNLOAD
+                const response = await fetch('/api/compile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        files: template.files,
+                        data: resumeToDownload.data
+                    })
+                });
+
+                if (!response.ok) throw new Error("Compilation failed");
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${resumeToDownload.title.replace(/\s+/g, '_')}_${template.name.replace(/\s+/g, '_')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                setDownloading(false);
+                setResumeToDownload(null);
+            } else {
+                // HTML PRINT
+                const key = template.componentKey || 'modern';
+                setPrintingTemplateKey(key);
+                setPrintingResume(resumeToDownload);
+                // Print triggered by effect, closes modal onAfterPrint
             }
-
-            const template = templateSnap.data() as Template;
-
-            if (template.type !== 'latex' || !template.files) {
-                alert("Only LaTeX templates support PDF download currently.");
-                return;
-            }
-
-            // 2. Call API
-            const response = await fetch('/api/compile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    files: template.files,
-                    data: resume.data
-                })
-            });
-
-            if (!response.ok) throw new Error("Compilation failed");
-
-            // 3. Download
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${resume.title.replace(/\s+/g, '_')}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
 
         } catch (error) {
             console.error("Download error:", error);
-            alert("Failed to generate PDF. Please try again.");
-        } finally {
-            setDownloadingId(null);
+            alert("Download failed. Please try again.");
+            setDownloading(false);
         }
     }
 
@@ -103,8 +159,115 @@ export default function ResumeList() {
         );
     }
 
+    const PrintComponent = printingTemplateKey ? TEMPLATE_MAP[printingTemplateKey] : null;
+
     return (
-        <div className="space-y-6 animate-fade-in-up">
+        <div className="space-y-6 animate-fade-in-up relative">
+
+            {/* Hidden Print Container */}
+            <div style={{ position: "absolute", top: "-9999px", left: "-9999px" }}>
+                <div ref={contentRef}>
+                    {PrintComponent && printingResume && printingResume.data && (
+                        <PrintComponent data={printingResume.data} />
+                    )}
+                </div>
+            </div>
+
+            {/* Download Selection Modal */}
+            {resumeToDownload && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0f0f12] border border-white/10 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                            <div>
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 text-purple-400" />
+                                    Download Resume
+                                </h3>
+                                <p className="text-sm text-gray-400">Select a style for <strong>{resumeToDownload.title}</strong></p>
+                            </div>
+                            <button
+                                onClick={() => setResumeToDownload(null)}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+                            {/* Left: Template Selector */}
+                            <div className="w-full md:w-1/3 p-6 overflow-y-auto custom-scrollbar border-r border-white/10 bg-black/20">
+                                <h4 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider">Select Template</h4>
+                                <TemplateSelector
+                                    templates={templates}
+                                    selectedId={selectedTemplateId}
+                                    onSelect={setSelectedTemplateId}
+                                />
+                            </div>
+
+                            {/* Right: Live Preview */}
+                            <div className="w-full md:w-2/3 p-6 bg-gray-900/50 flex flex-col items-center justify-center relative overflow-hidden">
+                                <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                                    <FileText className="w-64 h-64 text-white" />
+                                </div>
+
+                                <div className="relative z-10 w-full max-w-[500px] aspect-[1/1.414] bg-white shadow-2xl rounded-sm overflow-hidden transform scale-90 md:scale-100 transition-all duration-500 ring-1 ring-white/10">
+                                    {selectedTemplateId && (() => {
+                                        const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+                                        const PreviewComponent = selectedTemplate?.componentKey ? TEMPLATE_MAP[selectedTemplate.componentKey] : null;
+
+                                        if (selectedTemplate?.type === 'latex' && !PreviewComponent) {
+                                            return (
+                                                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-500 p-8 text-center sticky top-0">
+                                                    <FileText className="w-16 h-16 mb-4 text-gray-400" />
+                                                    <h4 className="font-bold text-gray-700">LaTeX Template</h4>
+                                                    <p className="text-xs mt-2">Server-side rendered. Preview not available in client.</p>
+                                                    <p className="text-xs mt-4 text-purple-600 font-bold">PDF will be generated with high-quality typesetting.</p>
+                                                </div>
+                                            )
+                                        }
+
+                                        if (PreviewComponent && resumeToDownload.data) {
+                                            return (
+                                                <div className="w-[210mm] min-h-[297mm] origin-top-left transform scale-[0.4] sm:scale-[0.5] md:scale-[0.6] bg-white">
+                                                    <PreviewComponent data={resumeToDownload.data} />
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div className="flex items-center justify-center h-full text-gray-400">
+                                                Select a template to preview
+                                            </div>
+                                        )
+                                    })()}
+                                </div>
+                                <p className="mt-4 text-xs text-gray-500 font-medium">Live Preview (Scale may vary in final PDF)</p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-white/10 bg-white/5 flex justify-end gap-3 z-20 relative">
+                            <button
+                                onClick={() => setResumeToDownload(null)}
+                                className="px-6 py-3 rounded-xl border border-white/10 text-gray-300 font-medium hover:bg-white/5 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDownload}
+                                disabled={downloading || !selectedTemplateId}
+                                className="px-8 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold shadow-lg shadow-purple-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {downloading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Preparing PDF...</>
+                                ) : (
+                                    <><Download className="w-4 h-4" /> Download PDF</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-white">My Resumes</h2>
@@ -137,12 +300,16 @@ export default function ResumeList() {
                                 {/* Overlay Actions */}
                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
                                     <button
-                                        onClick={() => handleDownload(resume)}
-                                        disabled={downloadingId === resume.id}
-                                        className="bg-white text-black px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 hover:bg-purple-50 transition-colors transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={() => router.push(`/profile?tab=studio&resumeId=${resume.id}`)}
+                                        className="bg-purple-600 text-white px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 hover:bg-purple-500 transition-colors transform hover:-translate-y-1 shadow-lg shadow-purple-900/20"
                                     >
-                                        {downloadingId === resume.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                                        {downloadingId === resume.id ? "Generating..." : "Download PDF"}
+                                        <PenTool className="w-3 h-3" /> Edit in Studio
+                                    </button>
+                                    <button
+                                        onClick={() => handleOpenDownloadModal(resume)}
+                                        className="bg-white text-black px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 hover:bg-purple-50 transition-colors transform hover:-translate-y-1"
+                                    >
+                                        <Download className="w-3 h-3" /> Download PDF
                                     </button>
                                     <button
                                         onClick={() => handleDelete(resume.id)}
@@ -162,7 +329,7 @@ export default function ResumeList() {
                                             resume.score >= 70 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" :
                                                 "bg-red-500/10 text-red-400 border-red-500/20"
                                             }`}>
-                                            {resume.score}%
+                                            ATS Score: {resume.score}%
                                         </span>
                                     )}
                                 </div>

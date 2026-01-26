@@ -7,6 +7,7 @@ import Sidebar, { Tab } from "@/components/dashboard/Sidebar";
 import Overview from "@/components/dashboard/Overview";
 import ProfileForm from "@/components/ProfileForm";
 import ResumeList from "@/components/dashboard/ResumeList";
+import ResumeStudio from "@/components/dashboard/ResumeStudio";
 import Integrations from "@/components/dashboard/Integrations";
 import SubscriptionView from "@/components/dashboard/Subscription";
 import SocialProfile from "@/components/dashboard/SocialProfile";
@@ -36,14 +37,25 @@ export default function DashboardPage() {
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [loadingData, setLoadingData] = useState(true);
 
+    const handleTabChange = (tab: Tab) => {
+        // Optimistic update
+        setActiveTab(tab);
+        setMobileMenuOpen(false);
+
+        // URL update
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('tab', tab);
+        params.delete('resumeId'); // Clear resumeId when switching tabs
+        router.push(`/profile?${params.toString()}`);
+    };
+
     // Initialize activeTab from URL if present
     useEffect(() => {
         const tabParam = searchParams.get('tab');
-        if (tabParam && ["overview", "social", "profile", "resumes", "integrations", "subscription"].includes(tabParam)) {
+        if (tabParam && ["overview", "social", "profile", "resumes", "integrations", "subscription", "studio", "settings"].includes(tabParam)) {
             setActiveTab(tabParam as Tab);
         }
     }, [searchParams]);
-
 
     useEffect(() => {
         const fetchData = async () => {
@@ -133,16 +145,6 @@ export default function DashboardPage() {
         }
     };
 
-    if (!mounted || authLoading || loadingData) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-black text-white">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-            </div>
-        );
-    }
-
-    if (!user || !profile) return null;
-
     return (
         <div className="min-h-screen bg-black text-white flex flex-col md:flex-row overflow-hidden relative font-sans selection:bg-purple-500/30">
 
@@ -162,7 +164,7 @@ export default function DashboardPage() {
             <div className={`fixed inset-0 z-40 transform transition-transform duration-300 md:relative md:translate-x-0 md:inset-auto ${mobileMenuOpen ? "translate-x-0 bg-black/95" : "-translate-x-full"}`}>
                 <Sidebar
                     activeTab={activeTab}
-                    setActiveTab={(tab) => { setActiveTab(tab); setMobileMenuOpen(false); }}
+                    setActiveTab={handleTabChange}
                     isGithubConnected={profile?.integrations?.github}
                 />
             </div>
@@ -176,7 +178,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="relative z-10 p-4 md:p-10 max-w-7xl mx-auto pb-20">
-                    {activeTab === "overview" && <Overview profile={profile} stats={stats} recentResumes={recentResumes} subscription={subscription} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
+                    {activeTab === "overview" && <Overview profile={profile} stats={stats} recentResumes={recentResumes} subscription={subscription} onNavigate={(tab) => handleTabChange(tab as Tab)} />}
                     {activeTab === "social" && <SocialProfile profile={profile} subscription={subscription} onUpdate={refreshProfile} />}
                     {activeTab === "profile" && (
                         <div className="animate-fade-in-up">
@@ -190,6 +192,9 @@ export default function DashboardPage() {
                     {activeTab === "settings" && <Settings />}
                 </div>
             </main>
+
+            {/* Resume Studio - Rendering outside main to ensure full screen overlay */}
+            {activeTab === "studio" && <ResumeStudio />}
         </div>
     );
 }

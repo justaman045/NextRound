@@ -1,9 +1,9 @@
 "use client";
 
-import { LayoutDashboard, User, FileText, Link as LinkIcon, CreditCard, LogOut, Share2, Settings, Triangle } from "lucide-react";
+import { LayoutDashboard, User, FileText, Link as LinkIcon, CreditCard, LogOut, Share2, Settings, Triangle, PenTool } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-export type Tab = "overview" | "profile" | "resumes" | "integrations" | "subscription" | "social" | "settings";
+export type Tab = "overview" | "studio" | "profile" | "resumes" | "integrations" | "subscription" | "social" | "settings";
 
 interface SidebarProps {
     activeTab: Tab;
@@ -16,9 +16,9 @@ export default function Sidebar({ activeTab, setActiveTab, isGithubConnected }: 
 
     const menuItems = [
         { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "resumes", label: "My Resumes", icon: FileText },
         { id: "social", label: "Social Profile", icon: Share2 },
         { id: "profile", label: "Master Profile", icon: User },
-        { id: "resumes", label: "My Resumes", icon: FileText },
         { id: "integrations", label: "Integrations", icon: LinkIcon },
         { id: "subscription", label: "Subscription", icon: CreditCard },
         { id: "settings", label: "Settings", icon: Settings },

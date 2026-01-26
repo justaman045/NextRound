@@ -21,20 +21,6 @@ export const AI_MODELS = [
         description: "Fastest response, high limits",
         icon: Cpu,
         color: "text-green-400"
-    },
-    {
-        id: "gemma-3-12b-it",
-        name: "Gemma 3 12B",
-        description: "Google's open-weight model",
-        icon: AlignHorizontalDistributeEndIcon,
-        color: "text-pink-400"
-    },
-    {
-        id: "gemini-1.5-flash",
-        name: "Gemini 1.5 Flash",
-        description: "Reliable legacy version",
-        icon: Beaker,
-        color: "text-blue-400"
     }
 ];
 
