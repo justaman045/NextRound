@@ -6,13 +6,14 @@ export interface Experience {
     endDate: string;
     description: string;
     source?: string;
+    location?: string;
 }
 
 export interface Education {
     id: string;
     degree: string;
     school: string;
-
+    location?: string;
     year: string;
     source?: string;
 }

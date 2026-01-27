@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { getUserResumes, saveUserResume } from "@/lib/firestore";
 import { UserResume, UserProfile, Template } from "@/types";
-import { ArrowLeft, Loader2, Sparkles, Save, PenTool, Layout, Download, Trash2, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Save, PenTool, Layout, Download, Trash2, Plus, RefreshCw, Sparkles, FileCode } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { collection, getDocs, query } from "firebase/firestore";
@@ -19,12 +19,14 @@ import PageBreaks from "./PageBreaks";
 import ModernTemplate from "@/components/templates/ModernTemplate";
 import MinimalistTemplate from "@/components/templates/MinimalistTemplate";
 import CreativeTemplate from "@/components/templates/CreativeTemplate";
+import FaangPathTemplate from "@/components/templates/FaangPathTemplate";
 
 // Map component keys (from Firestore) to actual React Components
-const TEMPLATE_MAP: Record<string, React.FC<{ data: UserProfile; isCompact?: boolean; scale?: number }>> = {
+const TEMPLATE_MAP: Record<string, React.FC<{ data: UserProfile }>> = {
     "modern": ModernTemplate,
     "minimalist": MinimalistTemplate,
-    "creative": CreativeTemplate
+    "creative": CreativeTemplate,
+    "faangpath": FaangPathTemplate
 };
 
 export default function ResumeStudio() {
@@ -38,8 +40,6 @@ export default function ResumeStudio() {
     const [editorData, setEditorData] = useState<UserProfile | null>(null);
     const [resumeTitle, setResumeTitle] = useState("");
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-    const [isCompact, setIsCompact] = useState(false);
-    const [scale, setScale] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
     const [saving, setSaving] = useState(false);
@@ -209,6 +209,45 @@ export default function ResumeStudio() {
         }
     };
 
+    const [compiling, setCompiling] = useState(false);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+
+    const handleCompilePreview = async () => {
+        if (!selectedTemplateId || !editorData) return;
+        setCompiling(true);
+        try {
+            const template = templates.find(t => t.id === selectedTemplateId);
+            if (!template || !template.files) {
+                toast.error("Template definition missing");
+                return;
+            }
+
+            const response = await fetch("/api/compile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    files: template.files,
+                    data: editorData
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.details ? `latex: ${err.details.substring(0, 100)}` : (err.error || "Compilation failed"));
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            setPdfPreviewUrl(url);
+            toast.success("PDF Compiled Successfully!");
+        } catch (error: any) {
+            console.error("Compile error", error);
+            toast.error(error.message || "Failed to compile PDF");
+        } finally {
+            setCompiling(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex flex-col justify-center items-center h-96 gap-4">
@@ -307,116 +346,12 @@ export default function ResumeStudio() {
                             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                 <Layout className="w-4 h-4" /> Template Style
                             </h3>
-                            <button
-                                onClick={async () => {
-                                    if (!contentRef.current) return;
-                                    const MAX_HEIGHT_PX = 1122; // A4 at 96 DPI
-                                    let currentHeight = contentRef.current.scrollHeight;
-
-                                    if (currentHeight <= MAX_HEIGHT_PX) {
-                                        toast.success("Already fits on one page!");
-                                        return;
-                                    }
-
-                                    toast.info("Magic Wand active! Optimizing layout...");
-
-                                    // Step 1: Compact Mode
-                                    if (!isCompact) {
-                                        setIsCompact(true);
-                                        // Wait for render
-                                        await new Promise(r => setTimeout(r, 100));
-                                        if (contentRef.current.scrollHeight <= MAX_HEIGHT_PX) {
-                                            toast.success("Fixed with Compact Mode!");
-                                            return;
-                                        }
-                                    }
-
-                                    // Step 2: Scale Down
-                                    let newScale = scale;
-                                    while (newScale > 0.75) {
-                                        newScale -= 0.05;
-                                        setScale(newScale);
-                                        await new Promise(r => setTimeout(r, 100));
-                                        if (contentRef.current.scrollHeight * newScale <= MAX_HEIGHT_PX) { // Important: check scaled height visual
-                                            // Wait, scrollHeight doesn't change with transform scale usually, but the visual fit does.
-                                            // Actually we need to check if content fits in the container *visually*.
-                                            // The container height wrapping is fixed at 297mm usually but flow might overflow.
-                                            // Simplest check: scrollHeight
-                                            // But scale is applied via transform, so scrollHeight stays same, but it visually shrinks.
-                                            // We need to check: scrollHeight * scale <= MAX_HEIGHT_PX
-                                            if (contentRef.current.scrollHeight * newScale <= MAX_HEIGHT_PX) {
-                                                toast.success(`Scaled to ${Math.round(newScale * 100)}% to fit!`);
-                                                return;
-                                            }
-                                        }
-                                    }
-
-                                    // Step 3: Content Truncation (Destructive)
-                                    if (window.confirm("Still doesn't fit! Allow Magic Wand to trim older Experience & Projects to fit?")) {
-                                        let filteredData = { ...editorData };
-                                        let optimizationApplied = false;
-
-                                        if (filteredData.projects && filteredData.projects.length > 2) {
-                                            filteredData.projects = filteredData.projects.slice(0, 2);
-                                            optimizationApplied = true;
-                                        }
-                                        if (filteredData.experience && filteredData.experience.length > 3) {
-                                            filteredData.experience = filteredData.experience.slice(0, 3);
-                                            optimizationApplied = true;
-                                        }
-
-                                        if (optimizationApplied) {
-                                            setEditorData(filteredData);
-                                            await new Promise(r => setTimeout(r, 100));
-                                            toast.success("Content optimized to fit 1 page.");
-                                        } else {
-                                            toast.warning("Could not optimize further. Try editing text.");
-                                        }
-                                    }
-                                }}
-                                className="text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all font-bold animate-pulse-slow"
-                            >
-                                <Sparkles className="w-3 h-3" /> Magic Fit
-                            </button>
                         </div>
                         <TemplateSelector
                             templates={templates}
                             selectedId={selectedTemplateId}
                             onSelect={setSelectedTemplateId}
                         />
-
-                        {/* Density Toggle */}
-                        <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-bold text-white">Compact Mode</span>
-                                <button
-                                    onClick={() => setIsCompact(!isCompact)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-black ${isCompact ? 'bg-purple-600' : 'bg-gray-700'}`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isCompact ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
-                            </div>
-
-                            {/* Content Scale Slider */}
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm text-gray-400">
-                                    <span className="font-bold text-white">Fit to Page</span>
-                                    <span>{Math.round(scale * 100)}%</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0.5"
-                                    max="1"
-                                    step="0.05"
-                                    value={scale}
-                                    onChange={(e) => setScale(parseFloat(e.target.value))}
-                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                                />
-                                <p className="text-xs text-gray-500">
-                                    Reduce scale to fit content on one page.
-                                </p>
-                            </div>
-                        </div>
                     </div>
 
                     <div className="h-px bg-white/10 w-full" />
@@ -713,8 +648,52 @@ export default function ResumeStudio() {
                 <div className="flex-1 bg-[#1a1a1a] p-8 lg:p-12 overflow-y-auto flex justify-center">
                     <div className="w-full max-w-[210mm] min-w-[210mm] transition-transform origin-top scale-[0.6] sm:scale-[0.7] md:scale-[0.8] lg:scale-[0.9] xl:scale-100">
                         <div className="bg-white shadow-2xl ring-1 ring-white/10 print:shadow-none print:ring-0 print:m-0 min-h-[297mm] relative group" ref={contentRef}>
-                            <PageBreaks contentRef={contentRef} scale={scale} onPageCountChange={setTotalPages} />
-                            <SelectedComponent data={editorData} isCompact={isCompact} scale={scale} />
+                            {selectedTemplate?.type === 'latex' ? (
+                                <div className="w-full h-[297mm] relative bg-gray-100 flex flex-col items-center justify-center">
+                                    {pdfPreviewUrl ? (
+                                        <iframe
+                                            src={`${pdfPreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                                            className="w-full h-full border-none"
+                                            title="Resume Preview"
+                                        />
+                                    ) : (
+                                        <>
+                                            {selectedTemplate.imageUrl ? (
+                                                <img
+                                                    src={selectedTemplate.imageUrl}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-contain opacity-90"
+                                                />
+                                            ) : (
+                                                <div className="text-gray-400 text-center p-8">
+                                                    <FileCode className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                                    <p className="text-xl font-bold opacity-50">LaTeX Template</p>
+                                                </div>
+                                            )}
+
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4">
+                                                <p className="text-white font-bold text-lg">LaTeX Template Selected</p>
+                                                <p className="text-gray-300 text-sm max-w-md text-center px-4">
+                                                    This template is generated using LaTeX. The editor on the left works the same, but you must click "Compile PDF" to see the final result.
+                                                </p>
+                                                <button
+                                                    onClick={handleCompilePreview}
+                                                    disabled={compiling}
+                                                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-lg transition-transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:scale-100"
+                                                >
+                                                    {compiling ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileCode className="w-5 h-5" />}
+                                                    {compiling ? "Compiling..." : "Compile Preview"}
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    <PageBreaks contentRef={contentRef} scale={1} onPageCountChange={setTotalPages} />
+                                    <SelectedComponent data={editorData} />
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

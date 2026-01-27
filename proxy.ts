@@ -47,7 +47,7 @@ export function proxy(request: NextRequest) {
         img-src 'self' blob: data: *.googleusercontent.com *.posthog.com *.razorpay.com raw.githubusercontent.com;
         font-src 'self' data:;
         connect-src 'self' *.googleapis.com *.firebasestorage.app *.firebaseapp.com *.posthog.com *.sentry.io *.razorpay.com raw.githubusercontent.com;
-        frame-src 'self' *.razorpay.com *.firebaseapp.com accounts.google.com;
+        frame-src 'self' blob: *.razorpay.com *.firebaseapp.com accounts.google.com;
     `.replace(/\s{2,}/g, ' ').trim();
 
     response.headers.set('Content-Security-Policy', cspHeader);

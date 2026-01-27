@@ -5,7 +5,7 @@ import { UserProfile } from "@/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-export async function tailorResume(userProfile: UserProfile, jobDescription: string, modelName: string = "gemini-2.5-flash", pageLength: "1" | "2" = "1"): Promise<UserProfile> {
+export async function tailorResume(userProfile: UserProfile, jobDescription: string, modelName: string = "gemini-2.5-flash", pageLength: "1" | "2" = "1"): Promise<{ data: UserProfile, score: number, analysis: string }> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not set");
   }
@@ -50,15 +50,20 @@ export async function tailorResume(userProfile: UserProfile, jobDescription: str
     ${jobDescription}
 
     OBJECTIVE:
-    Tailor the candidate's resume to strictly match the Job Description for a 99% ATS match score, while maintaining professional integrity.
+    Tailor the candidate's resume to strictly match the Job Description. Maximize the ATS match score by using relevant keywords, but prioritize professional integrity and readability.
     
     ${lengthConstraint}
 
     CRITICAL RULES:
     1. **Keywords**: YOU MUST intelligently embed important keywords from the JD (skills, tools, methodologies) into the summary and bullet points. Use the exact wording found in the JD where applicable.
-    2. **Selection**: Select ONLY the most relevant experience and skills. If a past role is irrelevant, you may condense it significantly or omit the bullets, but generally keep the timeline to show continuity. Focus 80% of the content on the roles most similar to the target job.
-    3. **Impact**: Rewrite bullet points using the STAR method (Situation, Task, Action, Result) where possible. Quantify results (e.g., "Improved X by Y%", "Managed Z team size"). Use strong action verbs.
-    4. **Formatting**: Output strictly PLAIN TEXT. DO NOT use markdown characters like **bold**, *italics*, or [links]. DO NOT wrap keywords in asterisks. Return clean, unformatted strings.
+    2. **Selection**: Select ONLY the most relevant experience and skills. Focus 80% of the content on roles similar to the target job.
+    3. **Impact**: Rewrite bullet points using the STAR method (Situation, Task, Action, Result) where possible. Quantify results.
+    4. **Formatting**: Output strictly PLAIN TEXT. DO NOT use markdown characters like **bold**, *italics*, or [links].
+    5. **Scoring**: You must calculate an honest, objective ATS match score (0-100) for the *final optimized resume* against the JD. 
+       - 90-100: Perfect match, all critical keywords present.
+       - 80-89: Strong match, missing minor keywords.
+       - <80: Good match, but experience gaps exist.
+       - DO NOT inflate the score. If the candidate lacks core requirements, give a realistic lower score.
 
     TASK:
     1. **Summary**: Rewrite the "Summary" to be a powerful elevator pitch. It MUST mention the specific Role Title from the JD and the top hard skills.
@@ -79,13 +84,17 @@ export async function tailorResume(userProfile: UserProfile, jobDescription: str
        - Rewrite the description to be concise and impact-driven.
        - Ensure 'technologies' is a comma-separated string of the most relevant stack used.
 
-    Output must be a valid JSON object matching the UserProfile interface:
+    Output must be a valid JSON object with the following structure:
     {
-      "summary": "string",
-      "experience": [ { "id": "string", "role": "string", "company": "string", "startDate": "string", "endDate": "string", "description": "string (newline separated bullets)" } ],
-      "projects": [ { "id": "string", "name": "string", "description": "string", "technologies": "string", "link": "string" } ],
-      "education": [ ... ],
-      "skills": "string"
+      "data": {
+          "summary": "string",
+          "experience": [ { "id": "string", "role": "string", "company": "string", "startDate": "string", "endDate": "string", "description": "string (newline separated bullets)" } ],
+          "projects": [ { "id": "string", "name": "string", "description": "string", "technologies": "string", "link": "string" } ],
+          "education": [ ... ],
+          "skills": "string"
+      },
+      "score": number, // 0-100 match score based on keyword coverage and role relevance
+      "analysis": "string" // A 1-sentence explanation of the score
     }
 
     Return ONLY the JSON.
@@ -95,7 +104,22 @@ export async function tailorResume(userProfile: UserProfile, jobDescription: str
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    return JSON.parse(text) as UserProfile;
+    const json = JSON.parse(text);
+
+    // Normalize response if AI messes up nesting (fallback)
+    if (json.summary && !json.data) {
+      return {
+        data: json as UserProfile,
+        score: 75, // Fallback if AI fails to generate score structure
+        analysis: "Score generated based on keyword matching."
+      };
+    }
+
+    return {
+      data: json.data as UserProfile,
+      score: json.score || 70,
+      analysis: json.analysis || "Generated by AI."
+    };
   } catch (error: any) {
     console.error("Error generating resume:", error);
     throw new Error(`Failed to generate resume: ${error.message || "Unknown error"}`);

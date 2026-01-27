@@ -10,6 +10,7 @@ import { tailorResume } from "@/actions/generateResume";
 import ModernTemplate from "@/components/templates/ModernTemplate";
 import MinimalistTemplate from "@/components/templates/MinimalistTemplate";
 import CreativeTemplate from "@/components/templates/CreativeTemplate";
+import FaangPathTemplate from "@/components/templates/FaangPathTemplate";
 import TemplateSelector from "@/components/tailor/TemplateSelector";
 import ModelSelector from "@/components/tailor/ModelSelector";
 import { useReactToPrint } from "react-to-print";
@@ -25,7 +26,8 @@ import PageBreaks from "@/components/dashboard/PageBreaks";
 const TEMPLATE_MAP: Record<string, React.FC<{ data: UserProfile }>> = {
     "modern": ModernTemplate,
     "minimalist": MinimalistTemplate,
-    "creative": CreativeTemplate
+    "creative": CreativeTemplate,
+    "faangpath": FaangPathTemplate
 };
 
 export default function TailorPage() {
@@ -219,17 +221,19 @@ export default function TailorPage() {
                 template: selectedTemplateId,
                 pageLength
             });
-            const result = await tailorResume(masterProfile, jobDescription, selectedModel, pageLength);
+
+            const { data: tailoredData, score } = await tailorResume(masterProfile, jobDescription, selectedModel, pageLength);
+
             const finalProfile = {
                 ...masterProfile,
-                ...result,
+                ...tailoredData,
                 fullName: masterProfile.fullName,
                 email: masterProfile.email,
                 phone: masterProfile.phone,
                 location: masterProfile.location,
                 website: masterProfile.website,
                 education: masterProfile.education,
-                skills: typeof result.skills === 'string' ? result.skills : masterProfile.skills
+                skills: typeof tailoredData.skills === 'string' ? tailoredData.skills : masterProfile.skills
             };
             setTailoredProfile(finalProfile);
 
@@ -237,14 +241,14 @@ export default function TailorPage() {
             const newResumeId = Date.now().toString();
 
             // Use custom title if provided, else generated one
-            const titleToUse = resumeTitle.trim() || result.projects?.[0]?.name || `Tailored Resume ${new Date().toLocaleDateString()}`;
+            const titleToUse = resumeTitle.trim() || tailoredData.projects?.[0]?.name || `Tailored Resume ${new Date().toLocaleDateString()}`;
 
             const newResume: any = {
                 id: newResumeId,
                 title: titleToUse,
                 templateId: selectedTemplateId || "modern",
                 createdAt: new Date().toISOString(),
-                score: 95 + Math.floor(Math.random() * 5), // Mock score (High Match)
+                score: score, // Real AI Score
                 jobDescription: jobDescription.substring(0, 100) + "...",
                 thumbnailUrl: "",
                 pdfUrl: "",
@@ -470,9 +474,8 @@ export default function TailorPage() {
                                                         title="Resume Preview"
                                                     />
                                                 ) : (
-                                                    <div className="scale-[0.6] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white">
-                                                        <div ref={contentRef} className="relative" style={{ width: '210mm', minHeight: '297mm' }}>
-                                                            <PageBreaks contentRef={contentRef} scale={1} />
+                                                    <div className="scale-[0.45] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white">
+                                                        <div ref={contentRef} className="relative" style={{ width: '210mm' }}>
                                                             {/* Use tailoredProfile if available, else masterProfile for preview */}
                                                             <SelectedComponent
                                                                 data={(tailoredProfile || masterProfile) as UserProfile}

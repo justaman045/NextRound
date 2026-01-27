@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
                     // Fix 3: Fix spacing around LaTeX braces that might confuse Handlebars
                     // { {{ var }} } is correct, but ensure consistency
 
-                    const template = Handlebars.compile(content);
+                    const template = Handlebars.compile(content, { noEscape: true });
                     return {
                         ...file,
                         content: template(sanitizedData)

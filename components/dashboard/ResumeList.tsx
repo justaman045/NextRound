@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { UserResume, Template, UserProfile } from "@/types";
 import { FileText, MoreVertical, Download, Trash2, Calendar, Loader2, X, Sparkles, PenTool } from "lucide-react";
 import { getUserResumes, deleteUserResume } from "@/lib/firestore";
@@ -13,11 +14,13 @@ import TemplateSelector from "@/components/tailor/TemplateSelector";
 import ModernTemplate from "@/components/templates/ModernTemplate";
 import MinimalistTemplate from "@/components/templates/MinimalistTemplate";
 import CreativeTemplate from "@/components/templates/CreativeTemplate";
+import FaangPathTemplate from "@/components/templates/FaangPathTemplate";
 
 const TEMPLATE_MAP: Record<string, React.FC<{ data: UserProfile }>> = {
     "modern": ModernTemplate,
     "minimalist": MinimalistTemplate,
-    "creative": CreativeTemplate
+    "creative": CreativeTemplate,
+    "faangpath": FaangPathTemplate
 };
 
 export default function ResumeList() {
@@ -173,9 +176,9 @@ export default function ResumeList() {
                 </div>
             </div>
 
-            {/* Download Selection Modal */}
-            {resumeToDownload && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            {/* Download Selection Modal - Portaled to avoid transform clipping/positioning issues */}
+            {resumeToDownload && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
                     <div className="bg-[#0f0f12] border border-white/10 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                         <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                             <div>
@@ -205,43 +208,47 @@ export default function ResumeList() {
                             </div>
 
                             {/* Right: Live Preview */}
-                            <div className="w-full md:w-2/3 p-6 bg-gray-900/50 flex flex-col items-center justify-center relative overflow-hidden">
-                                <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-                                    <FileText className="w-64 h-64 text-white" />
-                                </div>
+                            {/* Right: Live Preview */}
+                            <div className="w-full md:w-2/3 bg-gray-900/50 relative overflow-hidden flex flex-col">
+                                <div className="flex-1 bg-black/40 rounded-xl relative overflow-y-auto overflow-x-hidden border border-white/5 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                    <div className="min-h-full flex flex-col items-center justify-center py-4">
+                                        {selectedTemplateId ? (() => {
+                                            const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+                                            const PreviewComponent = selectedTemplate?.componentKey ? TEMPLATE_MAP[selectedTemplate.componentKey] : null;
 
-                                <div className="relative z-10 w-full max-w-[500px] aspect-[1/1.414] bg-white shadow-2xl rounded-sm overflow-hidden transform scale-90 md:scale-100 transition-all duration-500 ring-1 ring-white/10">
-                                    {selectedTemplateId && (() => {
-                                        const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-                                        const PreviewComponent = selectedTemplate?.componentKey ? TEMPLATE_MAP[selectedTemplate.componentKey] : null;
+                                            if (selectedTemplate?.type === 'latex' && !PreviewComponent) {
+                                                return (
+                                                    <div className="w-full max-w-[500px] aspect-[1/1.414] bg-gray-100 flex flex-col items-center justify-center text-gray-500 p-8 text-center shadow-2xl rounded-sm">
+                                                        <FileText className="w-16 h-16 mb-4 text-gray-400" />
+                                                        <h4 className="font-bold text-gray-700">LaTeX Template</h4>
+                                                        <p className="text-xs mt-2">Server-side rendered. Preview not available in client.</p>
+                                                        <p className="text-xs mt-4 text-purple-600 font-bold">PDF will be generated with high-quality typesetting.</p>
+                                                    </div>
+                                                )
+                                            }
 
-                                        if (selectedTemplate?.type === 'latex' && !PreviewComponent) {
+                                            if (PreviewComponent && resumeToDownload.data) {
+                                                return (
+                                                    <div className="scale-[0.45] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white">
+                                                        <div className="relative" style={{ width: '210mm' }}>
+                                                            <PreviewComponent data={resumeToDownload.data} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
                                             return (
-                                                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-500 p-8 text-center sticky top-0">
-                                                    <FileText className="w-16 h-16 mb-4 text-gray-400" />
-                                                    <h4 className="font-bold text-gray-700">LaTeX Template</h4>
-                                                    <p className="text-xs mt-2">Server-side rendered. Preview not available in client.</p>
-                                                    <p className="text-xs mt-4 text-purple-600 font-bold">PDF will be generated with high-quality typesetting.</p>
+                                                <div className="flex items-center justify-center h-full text-gray-400">
+                                                    Select a template to preview
                                                 </div>
                                             )
-                                        }
-
-                                        if (PreviewComponent && resumeToDownload.data) {
-                                            return (
-                                                <div className="w-[210mm] min-h-[297mm] origin-top-left transform scale-[0.4] sm:scale-[0.5] md:scale-[0.6] bg-white">
-                                                    <PreviewComponent data={resumeToDownload.data} />
-                                                </div>
-                                            );
-                                        }
-
-                                        return (
+                                        })() : (
                                             <div className="flex items-center justify-center h-full text-gray-400">
                                                 Select a template to preview
                                             </div>
-                                        )
-                                    })()}
+                                        )}
+                                    </div>
                                 </div>
-                                <p className="mt-4 text-xs text-gray-500 font-medium">Live Preview (Scale may vary in final PDF)</p>
                             </div>
                         </div>
 
@@ -265,7 +272,8 @@ export default function ResumeList() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             <div className="flex justify-between items-center">

@@ -79,6 +79,12 @@ export async function convertLatexToTemplate(latexCode: string): Promise<string>
        - Replace Projects section with {{#each projects}} loop
        - Replace other sections with {{#each customSections}} loop
        - Replace Skills with {{ skills }}
+
+    SPECIFIC COMMAND MAPPINGS:
+    - \\name{...} -> \\name{ {{ fullName }} }
+    - \\address{...} -> \\address{ {{ email }} \\\\ {{ phone }} \\\\ {{ location }} }
+    - \\begin{rSection}{...} -> Treat these as section headers.
+    
     3. KEEP all LaTeX formatting (packages, geometry, custom commands) EXACTLY AS IS
     4. If you see multiple entries (e.g. 2 Jobs), remove all but one, and wrap that one in the loop
     
