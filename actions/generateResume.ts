@@ -24,8 +24,7 @@ export async function tailorResume(userProfile: UserProfile, jobDescription: str
   };
 
   const lengthConstraint = pageLength === "1"
-    ? `CRITICAL - 1-PAGE AESTHETIC PRIORITY (PERFECT FIT):
-         - The user wants a "Full" single-page resume, but it MUST NOT spill to page 2.
+    ? `CRITICAL:
          - STRATEGY: BALANCED DENSITY.
            1. **Experience**: Select top 3-4 roles. Max 5 bullets per role. (Do not go over 5).
            2. **Projects**: STRICTLY limitation: Max 2 Projects.
