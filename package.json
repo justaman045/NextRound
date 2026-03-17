@@ -22,7 +22,7 @@
     "firebase-admin": "^13.6.0",
     "handlebars": "^4.7.8",
     "lucide-react": "^0.562.0",
-    "next": "16.1.4",
+    "next": "16.1.7",
     "posthog-js": "^1.334.1",
     "razorpay": "^2.9.6",
     "react": "19.2.3",
