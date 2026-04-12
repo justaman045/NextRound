@@ -169,7 +169,20 @@ export default function Overview({ profile, stats, recentResumes, subscription, 
                         <button onClick={() => onNavigate("integrations")} className="p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-left transition-colors group">
                             <LinkIcon className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
                             <p className="font-semibold text-white text-sm">Connect Accounts</p>
-                            <p className="text-xs text-gray-500 mt-1">LinkedIn, Indeed</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {(() => {
+                                    const connectedAccounts = [];
+                                    if (profile?.linkedinProfile || profile?.integrations?.linkedin) connectedAccounts.push('LinkedIn');
+                                    if (profile?.githubProfile || profile?.integrations?.github) connectedAccounts.push('GitHub');
+                                    if (profile?.integrations?.indeed) connectedAccounts.push('Indeed');
+                                    if (profile?.integrations?.naukri) connectedAccounts.push('Naukri');
+                                    
+                                    if (connectedAccounts.length > 0) {
+                                        return `${connectedAccounts.length} Connected: ${connectedAccounts.join(', ')}`;
+                                    }
+                                    return "LinkedIn, GitHub...";
+                                })()}
+                            </p>
                         </button>
                     </div>
                 </div>

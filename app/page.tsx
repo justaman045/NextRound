@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, FileText, Triangle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Hero from "@/components/landing/Hero";
 import ProductShowcase from "@/components/landing/ProductShowcase";
 import BentoGrid from "@/components/landing/BentoGrid";
@@ -14,6 +15,7 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const { user, signInWithGoogle, logout } = useAuth();
+  const router = useRouter();
   const [systemMode, setSystemMode] = useState<"development" | "production">("production");
 
   useEffect(() => {
@@ -54,12 +56,12 @@ export default function Home() {
                 >
                   Logout
                 </button>
-                <Link
-                  href="/profile"
+                <button
+                  onClick={() => router.push("/profile")}
                   className="bg-white text-black px-4 py-2 rounded-full font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm"
                 >
                   Dashboard <ArrowRight className="w-4 h-4" />
-                </Link>
+                </button>
               </div>
             ) : (
               systemMode === "production" && (

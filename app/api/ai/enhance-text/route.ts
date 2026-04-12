@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { checkRateLimit } from '@/lib/ratelimit';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "" });
 
 export async function POST(request: Request) {
     try {
@@ -31,8 +31,7 @@ export async function POST(request: Request) {
         }
 
         // Fallback or use requested model
-        const selectedModel = modelName || "gemini-2.5-flash";
-        let model = genAI.getGenerativeModel({ model: selectedModel });
+        const selectedModel = modelName || "openai/gpt-oss-120b:free";
 
         let systemPrompt = "";
         let isJson = false;
@@ -89,16 +88,23 @@ export async function POST(request: Request) {
 
         const prompt = `${systemPrompt}\n\nOriginal Text:\n${text}\n\nEnhanced Version${isJson ? " (JSON)" : ""}:`;
 
-        let result;
+        let responseText = "";
         try {
-            result = await model.generateContent(prompt);
+            const completion = await openai.chat.completions.create({
+                model: selectedModel,
+                messages: [{ role: "user", content: prompt }]
+            });
+            responseText = completion.choices[0].message.content || "";
         } catch (error: any) {
-            console.warn(`Model ${selectedModel} failed, falling back to gemini-2.5-flash. Error: ${error.message}`);
-            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            result = await fallbackModel.generateContent(prompt);
+            console.warn(`Model ${selectedModel} failed, falling back to openai/gpt-oss-120b:free. Error: ${error.message}`);
+            const completion = await openai.chat.completions.create({
+                model: "openai/gpt-oss-120b:free",
+                messages: [{ role: "user", content: prompt }]
+            });
+            responseText = completion.choices[0].message.content || "";
         }
 
-        let responseText = result.response.text().trim();
+        responseText = responseText.trim();
 
         // Clean markdown code blocks if present (common with JSON output)
         if (responseText.startsWith("```json")) {

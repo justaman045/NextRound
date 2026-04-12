@@ -1,18 +1,18 @@
 
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import OpenAI from "openai";
 
 export async function POST(request: Request) {
+    const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "" });
+
     try {
-        const { profile, source = "github" } = await request.json();
+        const { profile, source = "github", model } = await request.json();
 
         if (!profile) {
             return NextResponse.json({ error: "Profile data is required" }, { status: 400 });
         }
 
-        const modelName = "gemma-3-12b-it";
+        const modelName = model || "openai/gpt-oss-120b:free";
         let systemPrompt = "";
 
         if (source === "linkedin") {
@@ -64,37 +64,52 @@ export async function POST(request: Request) {
             }`;
         }
 
-        let result;
+        let responseText = "";
         try {
-            const model = genAI.getGenerativeModel({ model: modelName });
-            result = await model.generateContent(systemPrompt);
+            const completion = await openai.chat.completions.create({
+                model: modelName,
+                messages: [{ role: "user", content: systemPrompt }]
+            });
+            responseText = completion.choices[0].message.content || "";
         } catch (error: any) {
             console.warn(`Primary model ${modelName} failed: `, error.message);
-            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            result = await fallbackModel.generateContent(systemPrompt);
+            const completion = await openai.chat.completions.create({
+                model: "openai/gpt-oss-120b:free",
+                messages: [{ role: "user", content: systemPrompt }]
+            });
+            responseText = completion.choices[0].message.content || "";
 
             return NextResponse.json({
-                ...JSON.parse(result.response.text().replace(/```json\n?|```/g, "").trim()),
-                model: "Gemini 1.5 Flash (Fallback)"
+                ...JSON.parse(responseText.replace(/```json\n?|```/g, "").trim()),
+                model: "Gemini 2.0 Flash Lite (Fallback)"
             });
         }
 
-        let responseText = result.response.text().trim();
-        if (responseText.startsWith("```json")) {
-            responseText = responseText.replace(/^```json\n/, "").replace(/\n```$/, "");
-        } else if (responseText.startsWith("```")) {
-            responseText = responseText.replace(/^```\n/, "").replace(/\n```$/, "");
+        // Robust JSON extraction
+        let parsedJSON: any = {};
+        try {
+            const jsonMatch = responseText.match(/```(?:json)?\n([\s\S]*?)\n```/i);
+            if (jsonMatch) {
+                responseText = jsonMatch[1];
+            } else {
+                const fallbackMatch = responseText.match(/\{[\s\S]*\}/);
+                if (fallbackMatch) {
+                    responseText = fallbackMatch[0];
+                }
+            }
+            parsedJSON = JSON.parse(responseText);
+        } catch (e) {
+            console.error("Failed to parse JSON string:", responseText);
+            throw new Error("Invalid output format from model");
         }
 
-        const analysis = JSON.parse(responseText);
-
         return NextResponse.json({
-            ...analysis,
-            model: "Gemma 3 12B"
+            ...parsedJSON,
+            model: modelName.split("/").pop() || modelName
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("AI Profile Analysis Error:", error);
-        return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
+        return NextResponse.json({ error: error.message || "Analysis failed", stack: error.stack }, { status: 500 });
     }
 }

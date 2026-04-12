@@ -4,12 +4,14 @@ import { Github, Code2, ExternalLink, Share2, BookOpen, Download, Sparkles, Load
 import { useEffect, useState } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import ImportProjectModal from "./ImportProjectModal";
 import { saveUserProfile } from "@/lib/firestore";
 import { removeDuplicates } from "@/lib/profile-utils";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { useFreeModels } from "@/hooks/useFreeModels";
 
 interface SocialProfileProps {
     profile: UserProfile;
@@ -29,6 +31,16 @@ export default function SocialProfile({ profile, subscription, onUpdate }: Socia
 
     const [error, setError] = useState<string | null>(null);
     const [fixingDuplicates, setFixingDuplicates] = useState(false);
+    
+    // Add selected model state
+    const { models } = useFreeModels();
+    const [selectedModel, setSelectedModel] = useState<string>(models[0]?.id || "");
+
+    useEffect(() => {
+        if (models.length > 0 && !models.find(m => m.id === selectedModel)) {
+            setSelectedModel(models[0].id);
+        }
+    }, [models, selectedModel]);
 
     // Calculate duplicates on every render/profile change
     const cleanProfile = removeDuplicates(profile);
@@ -71,18 +83,20 @@ export default function SocialProfile({ profile, subscription, onUpdate }: Socia
             const res = await fetch("/api/ai/analyze-profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ profile, source })
+                body: JSON.stringify({ profile, source, model: selectedModel })
             });
 
             let data;
             try {
                 data = await res.json();
             } catch (e) {
-                throw new Error("Failed to parse API response");
+                toast.error("Failed to parse API response");
+                return;
             }
 
             if (!res.ok) {
-                throw new Error(data.error || "Analysis failed");
+                toast.error(data.error || "Analysis failed");
+                return;
             }
 
             // Update profile with analysis
@@ -171,6 +185,7 @@ export default function SocialProfile({ profile, subscription, onUpdate }: Socia
     const username = inferUsername();
     const specialRepo = username ? githubProjects.find(p => p.name.toLowerCase() === username.toLowerCase()) : null;
     const [readmeContent, setReadmeContent] = useState<string | null>(null);
+    const [readmeBranch, setReadmeBranch] = useState<string>('main');
 
     useEffect(() => {
         const fetchReadme = async () => {
@@ -183,6 +198,7 @@ export default function SocialProfile({ profile, subscription, onUpdate }: Socia
                             if (res.ok) {
                                 const text = await res.text();
                                 setReadmeContent(text);
+                                setReadmeBranch(branch);
                                 return;
                             }
                         } catch (err) { }
@@ -425,6 +441,21 @@ export default function SocialProfile({ profile, subscription, onUpdate }: Socia
                                     {activeSource === 'linkedin' && <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />}
                                 </button>
                             )}
+                            
+                            {/* Model Selector */}
+                            <div className="flex items-center gap-2 ml-4">
+                                <select
+                                    value={selectedModel}
+                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                    className="bg-black/40 border border-white/10 rounded-full text-xs font-bold text-gray-300 px-4 py-2 focus:outline-none focus:border-purple-500 cursor-pointer hover:bg-white/5 transition-colors"
+                                >
+                                    {models.map((model) => (
+                                        <option key={model.id} value={model.id} className="bg-[#161b22] text-white">
+                                            {model.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -564,6 +595,7 @@ export default function SocialProfile({ profile, subscription, onUpdate }: Socia
                                     <div className="selection:bg-purple-500/40 opacity-90 prose prose-invert max-w-none prose-pre:bg-[#0d1117] prose-pre:border prose-pre:border-white/10">
                                         <ReactMarkdown
                                             remarkPlugins={[remarkGfm]}
+                                            rehypePlugins={[rehypeRaw]}
                                             components={{
                                                 h1: ({ node, ...props }) => <h1 {...props} className="text-3xl font-bold text-white mb-6 border-b border-white/10 pb-2 mt-8 first:mt-0" />,
                                                 h2: ({ node, ...props }) => <h2 {...props} className="text-2xl font-bold text-white mb-4 mt-8" />,
@@ -571,7 +603,13 @@ export default function SocialProfile({ profile, subscription, onUpdate }: Socia
                                                 p: ({ node, ...props }) => <p {...props} className="mb-4 leading-relaxed text-gray-300" />,
                                                 ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-6 mb-4 space-y-1 text-gray-300" />,
                                                 a: ({ node, ...props }) => <a {...props} className="text-blue-400 hover:text-blue-300 hover:underline" target="_blank" />,
-                                                img: ({ node, ...props }) => <img {...props} className="rounded-lg max-w-full my-6 border border-white/5 shadow-2xl" />,
+                                                img: ({ node, ...props }) => {
+                                                    let src = props.src;
+                                                    if (typeof src === 'string' && !src.startsWith('http') && !src.startsWith('data:')) {
+                                                        src = `https://raw.githubusercontent.com/${username}/${specialRepo?.name}/${readmeBranch}/${src.replace(/^\//, '')}`;
+                                                    }
+                                                    return <img {...props} src={src as string} className="rounded-lg max-w-full my-6 border border-white/5 shadow-2xl inline-block" />;
+                                                },
                                                 code: ({ node, ...props }) => {
                                                     const { className, children } = props;
                                                     const isInline = !className && typeof children === 'string' && !String(children).includes('\n');

@@ -115,11 +115,11 @@ export default function ModernTemplate({ data, isCompact = false, scale = 1, ena
                 )}
 
                 {/* Projects */}
-                {data.projects && data.projects.filter(p => !p.id?.startsWith("gh_") || p.imported).length > 0 && (
+                {data.projects && data.projects.filter(p => p.imported !== false).length > 0 && (
                     <section className={`${isCompact ? 'mb-2' : 'mb-4'}`}>
                         <h2 className={`font-bold uppercase tracking-widest border-b border-gray-300 page-break-inside-avoid ${isCompact ? 'text-[14pt] pb-0.5 mb-1' : 'text-[16pt] pb-1 mb-2'}`} style={{ breakAfter: 'avoid' }}>Projects</h2>
                         <div className={`${isCompact ? 'space-y-1' : 'space-y-2'}`}>
-                            {data.projects.filter(p => !p.id?.startsWith("gh_") || p.imported).map((proj, idx) => (
+                            {data.projects.filter(p => p.imported !== false).map((proj, idx) => (
                                 <div key={proj.id || idx} className="break-inside-avoid page-break-inside-avoid">
                                     <div className="flex justify-between items-baseline mb-0.5">
                                         <h3 className={`font-bold text-gray-800 ${isCompact ? 'text-[11pt]' : 'text-[12pt]'}`}>{proj.name}</h3>

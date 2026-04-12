@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getUserProfile, saveUserProfile, getUserSubscription } from "@/lib/firestore";
 import { Plus, Trash2, Save, Loader2, ArrowRight, Wand2, Sparkles, Lock } from "lucide-react";
 import Link from "next/link";
-import { AI_MODELS } from "./tailor/ModelSelector";
+import { useFreeModels } from "@/hooks/useFreeModels";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -33,7 +33,14 @@ export default function ProfileForm({ initialProfile }: ProfileFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(!initialProfile);
     const [saving, setSaving] = useState(false);
-    const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+    const { models } = useFreeModels();
+    const [selectedModel, setSelectedModel] = useState<string>(models[0]?.id || "");
+    
+    useEffect(() => {
+        if (models.length > 0 && !models.find(m => m.id === selectedModel)) {
+            setSelectedModel(models[0].id);
+        }
+    }, [models, selectedModel]);
     const [enhancingState, setEnhancingState] = useState<Record<string, boolean>>({});
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
@@ -134,7 +141,7 @@ export default function ProfileForm({ initialProfile }: ProfileFormProps) {
             const res = await fetch("/api/ai/analyze-profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ profile })
+                body: JSON.stringify({ profile, model: selectedModel })
             });
 
             let data;
@@ -362,7 +369,7 @@ export default function ProfileForm({ initialProfile }: ProfileFormProps) {
                             onChange={(e) => setSelectedModel(e.target.value)}
                             className="bg-black/40 border border-white/10 rounded-lg text-xs text-gray-300 px-3 py-2.5 focus:outline-none focus:border-purple-500 cursor-pointer hover:bg-white/5 transition-colors"
                         >
-                            {AI_MODELS.map((model) => (
+                            {models.map((model) => (
                                 <option key={model.id} value={model.id} className="bg-[#161b22] text-white">
                                     {model.name}
                                 </option>

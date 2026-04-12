@@ -4,7 +4,7 @@ import { Project, Subscription } from "@/types";
 import { X, Wand2, Loader2, Save, Sparkles, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { AI_MODELS } from "../tailor/ModelSelector";
+import { useFreeModels } from "@/hooks/useFreeModels";
 
 interface ImportProjectModalProps {
     project: Project;
@@ -21,8 +21,17 @@ export default function ImportProjectModal({ project, isOpen, subscription, onCl
     });
     const [enhancing, setEnhancing] = useState(false);
     const [saving, setSaving] = useState(false);
+    const { models } = useFreeModels();
     const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
     const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        if (models.length > 0 && selectedModel === "gemini-2.5-flash") {
+            setSelectedModel(models[0].id);
+        } else if (models.length > 0 && !models.find(m => m.id === selectedModel)) {
+            setSelectedModel(models[0].id);
+        }
+    }, [models, selectedModel]);
 
     useEffect(() => {
         setMounted(true);
@@ -181,7 +190,7 @@ export default function ImportProjectModal({ project, isOpen, subscription, onCl
                                         onChange={(e) => setSelectedModel(e.target.value as any)}
                                         className="bg-[#161b22] border border-white/10 rounded text-[10px] text-gray-300 px-2 py-1 focus:outline-none focus:border-purple-500 cursor-pointer hover:bg-black/50 transition-colors"
                                     >
-                                        {AI_MODELS.map((model) => (
+                                        {models.map((model) => (
                                             <option key={model.id} value={model.id} className="bg-[#161b22] text-white">
                                                 {model.name}
                                             </option>

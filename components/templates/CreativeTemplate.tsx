@@ -104,11 +104,11 @@ export default function CreativeTemplate({ data, isCompact = false, scale = 1, e
                     )}
 
                     {/* Projects Section if available */}
-                    {data.projects && data.projects.filter(p => !p.id?.startsWith("gh_") || p.imported).length > 0 && (
+                    {data.projects && data.projects.filter(p => p.imported !== false).length > 0 && (
                         <div className="mt-2">
                             <h2 className={`font-bold text-slate-900 border-b-2 border-emerald-500 pb-1 mb-2 inline-block page-break-inside-avoid ${isCompact ? 'text-[14pt]' : 'text-[16pt]'}`} style={{ breakAfter: 'avoid' }}>Projects</h2>
                             <div className="flex flex-col gap-0.5">
-                                {data.projects.filter(p => !p.id?.startsWith("gh_") || p.imported).map((proj, idx) => (
+                                {data.projects.filter(p => p.imported !== false).map((proj, idx) => (
                                     <div key={proj.id || idx} className="bg-slate-50 p-1 rounded-lg break-inside-avoid page-break-inside-avoid">
                                         <h3 className={`font-bold mb-0.5 ${isCompact ? 'text-[11pt]' : 'text-[12pt]'}`}>{proj.name}</h3>
                                         <ul className="list-disc list-outside ml-3.5 space-y-0.5">

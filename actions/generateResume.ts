@@ -1,44 +1,66 @@
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { UserProfile } from "@/types";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "" });
 
-export async function tailorResume(userProfile: UserProfile, jobDescription: string, modelName: string = "gemini-2.5-flash", pageLength: "1" | "2" = "1"): Promise<{ data: UserProfile, score: number, analysis: string }> {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not set");
+export async function tailorResume(userProfile: UserProfile, jobDescription: string, modelName: string = "openai/gpt-oss-120b:free", pageLength: "1" | "2" | "auto" = "auto"): Promise<{ data: UserProfile, score: number, analysis: string, pageCount?: "1" | "2" }> {
+  if (!process.env.OPENROUTER_API_KEY && !process.env.GEMINI_API_KEY) {
+    throw new Error("OPENROUTER_API_KEY is not set");
   }
 
-  const model = genAI.getGenerativeModel({ model: modelName, generationConfig: { responseMimeType: "application/json" } });
-
-  // Filter out hidden GitHub projects (same logic as ProfileForm)
-  // We only want to show projects that are manually added (don't start with gh_)
-  // OR projects that are explicitly imported (imported: true)
   const visibleProjects = (userProfile.projects || []).filter(p => !p.id.startsWith("gh_") || p.imported);
 
-  // Create a clean profile object for the AI
   const aiInputProfile = {
     ...userProfile,
     projects: visibleProjects
   };
 
-  const lengthConstraint = pageLength === "1"
-    ? `CRITICAL - 1-PAGE AESTHETIC PRIORITY (PERFECT FIT):
-         - The user wants a "Full" single-page resume, but it MUST NOT spill to page 2.
+  // Auto-calculate Years of Experience to determine proper resume length
+  let earliestYear = new Date().getFullYear();
+  let latestYear = new Date().getFullYear();
+  
+  if (userProfile.experience && userProfile.experience.length > 0) {
+      userProfile.experience.forEach(exp => {
+          const start = new Date(exp.startDate).getFullYear();
+          const end = exp.endDate && exp.endDate.toLowerCase() !== "present" ? new Date(exp.endDate).getFullYear() : new Date().getFullYear();
+          if (!isNaN(start) && start > 1950 && start < earliestYear) earliestYear = start;
+          if (!isNaN(end) && end > 1950 && end > latestYear) latestYear = end;
+      });
+  }
+  
+  const estimatedYOE = latestYear - earliestYear;
+  
+  // Decide effective length: 
+  // If user explicitly requests 1 or 2, grant it.
+  // If Auto, default to 1, but intelligently bump to 2 if they have 4+ years of experience!
+  let effectivePageLength: "1" | "2" = "1";
+  if (pageLength === "2") {
+      effectivePageLength = "2";
+  } else if (pageLength === "auto" && estimatedYOE >= 4) {
+      effectivePageLength = "2";
+  } else if (pageLength === "1") {
+      effectivePageLength = "1";
+  }
+
+  const lengthConstraint = effectivePageLength === "1"
+    ? `CRITICAL - 1-PAGE AESTHETIC PRIORITY:
+         - The user has ${estimatedYOE} YOE. Fit content elegantly on a single page.
          - STRATEGY: BALANCED DENSITY.
-           1. **Experience**: Select top 3-4 roles. Max 5 bullets per role. (Do not go over 5).
-           2. **Projects**: STRICTLY limitation: Max 2 Projects.
-           3. **Bullets**: Write 3-5 high-impact, concise bullets per role.
-           4. **Skills**: Top 15-18 skills.
+           1. **Experience**: Keep only most relevant roles. Max 4 bullets per role. Drop oldest irrelevant roles if necessary.
+           2. **Projects**: STRICTLY MUST INCLUDE 1-2 projects. DO NOT omit the projects section.
+           3. **Education**: DO NOT omit.
+           4. **Skills**: Top 15 skills.
            5. **Summary**: 3 lines max.
-         - FAIL-SAFE: If the experience is extensive, DROP the oldest role to ensure 1-page fit.`
-    : `TWO PAGE "RICH & DETAILED" TARGET:
-         - Target approximately 1.5 to 2 full pages of content.
-         - Provide deep detail for all relevant roles (up to 6-8 bullets each).
-         - Include distinctive "Project" descriptors and extensive skill lists.
-         - The resume should look authoritative and comprehensive.
-         - Avoid concise summarization; lean towards "thorough qualification".`;
+         - NEVER omit core structural sections (Projects, Education) entirely.`
+    : `CRITICAL - 2-PAGE COMPREHENSIVE EXPANSION REQUIRED:
+         - The user explicitly requires a comprehensive, highly detailed 2-PAGE resume.
+         - You MUST break down their experience into highly granular, highly detailed bullet points to expand the length.
+         - **Experience**: Provide 6 to 8 long, dense bullet points (STAR method) per role.
+         - **Projects**: Include EVERY project. Expand project descriptions into 2-3 detailed sentences each.
+         - **Skills**: Explode the skills section into a massive array of relevant technologies.
+         - DO NOT simply summarize. Your goal is to maximize granular technical descriptions so the render naturally flows to a second page.`;
 
   const prompt = `
     You are an expert Resume Writer and ATS (Applicant Tracking System) Specialist.
@@ -100,28 +122,69 @@ export async function tailorResume(userProfile: UserProfile, jobDescription: str
     Return ONLY the JSON.
   `;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    const json = JSON.parse(text);
+    let text = "";
+    try {
+      const completion = await openai.chat.completions.create({
+        model: modelName,
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: prompt }]
+      });
+      text = completion.choices[0].message.content || "{}";
+    } catch (error: any) {
+      console.warn(`Model ${modelName} failed, falling back to openai/gpt-oss-120b:free. Error: ${error.message}`);
+      try {
+        const fallbackCompletion = await openai.chat.completions.create({
+          model: "openai/gpt-oss-120b:free",
+          max_tokens: 4000,
+          response_format: { type: "json_object" },
+          messages: [{ role: "user", content: prompt }]
+        });
+        text = fallbackCompletion.choices[0].message.content || "{}";
+      } catch (fallbackError: any) {
+        console.error("Error generating resume with fallback:", fallbackError);
+        throw new Error(`Failed to generate resume: ${fallbackError.message || "Unknown error"}`);
+      }
+    }
+    
+    // Clean potential markdown markdown wrapping common with Gemma/Llama responses
+    let jsonString = text;
+    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      jsonString = jsonMatch[1];
+    }
+    let json;
+    try {
+        json = JSON.parse(jsonString);
+    } catch (parseError: any) {
+        console.error("Initial JSON parse failed. Attempting cleanup...", parseError.message);
+        try {
+            // Attempt to fix common LLM JSON syntax errors (trailing commas, control characters)
+            let cleanedString = jsonString
+                .replace(/,\s*([}\]])/g, '$1') // remove trailing commas
+                .replace(/[\u0000-\u001F]+/g, ' '); // remove unescaped control characters
+
+            json = JSON.parse(cleanedString);
+        } catch (secondError) {
+            console.error("Failed to parse LLM JSON completely. Raw string:", jsonString);
+            throw new Error("The AI model generated invalid text formatting. Please click 'Generate Resume' again to retry.");
+        }
+    }
 
     // Normalize response if AI messes up nesting (fallback)
     if (json.summary && !json.data) {
       return {
         data: json as UserProfile,
-        score: 75, // Fallback if AI fails to generate score structure
-        analysis: "Score generated based on keyword matching."
+        score: json.score || 75, // Fallback if AI fails to generate score structure
+        analysis: json.analysis || "Score generated based on keyword matching.",
+        pageCount: effectivePageLength as "1" | "2"
       };
     }
 
     return {
       data: json.data as UserProfile,
       score: json.score || 70,
-      analysis: json.analysis || "Generated by AI."
+      analysis: json.analysis || "Generated by AI.",
+      pageCount: effectivePageLength as "1" | "2"
     };
-  } catch (error: any) {
-    console.error("Error generating resume:", error);
-    throw new Error(`Failed to generate resume: ${error.message || "Unknown error"}`);
-  }
 }

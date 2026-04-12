@@ -20,9 +20,9 @@ describe('Pricing Component', () => {
 
     it('should show correct prices', () => {
         render(<Pricing />);
-        expect(screen.getByText('$0')).toBeInTheDocument();
-        expect(screen.getByText('$9')).toBeInTheDocument();
-        expect(screen.getByText('$29')).toBeInTheDocument();
+        expect(screen.getByText('₹0')).toBeInTheDocument();
+        expect(screen.getByText('₹799')).toBeInTheDocument();
+        expect(screen.getByText('₹2499')).toBeInTheDocument();
     });
 
     it('should show "Best Value" badge for Pro Saver', () => {

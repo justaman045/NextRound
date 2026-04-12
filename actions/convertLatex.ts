@@ -1,15 +1,13 @@
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "" });
 
 export async function convertLatexToTemplate(latexCode: string): Promise<string> {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not set");
+  if (!process.env.OPENROUTER_API_KEY && !process.env.GEMINI_API_KEY) {
+    throw new Error("OPENROUTER_API_KEY is not set");
   }
-
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `
     You are an expert LaTeX and Handlebars Code Converter.
@@ -98,9 +96,11 @@ export async function convertLatexToTemplate(latexCode: string): Promise<string>
     `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text();
+    const completion = await openai.chat.completions.create({
+        model: "openai/gpt-oss-120b:free",
+        messages: [{ role: "user", content: prompt }]
+    });
+    let text = completion.choices[0].message.content || "";
 
     // Cleanup markdown if present
     text = text.replace(/^```latex/, '').replace(/^```/, '').replace(/```$/, '');

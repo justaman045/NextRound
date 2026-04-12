@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai').default;
 
-async function testGemini() {
+async function testOpenRouter() {
     try {
         const envPath = path.resolve(__dirname, '../.env.local');
         if (!fs.existsSync(envPath)) {
@@ -10,25 +10,22 @@ async function testGemini() {
             process.exit(1);
         }
         const envContent = fs.readFileSync(envPath, 'utf-8');
-        const match = envContent.match(/GEMINI_API_KEY=(.*)/);
+        const match = envContent.match(/OPENROUTER_API_KEY=(.*)/) || envContent.match(/GEMINI_API_KEY=(.*)/);
 
         if (!match) {
-            console.error('GEMINI_API_KEY not found in .env.local');
+            console.error('OPENROUTER_API_KEY not found in .env.local');
             process.exit(1);
         }
 
         const apiKey = match[1].trim();
         console.log(`Found API Key: ${apiKey.substring(0, 5)}...`);
 
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: apiKey });
 
         const candidateModels = [
-            "gemini-3-flash",
-            "gemini-2.5-flash",
-            "gemini-2.0-flash-lite-preview-02-05", // Often preview models have separate quotas
-            "gemini-2.0-flash-lite",
-            "gemini-flash-latest",
-            "gemini-1.5-flash-latest" // Just in case
+            "google/gemma-3-12b-it:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen-2.5-coder-32b-instruct:free"
         ];
 
         console.log("Starting model search...");
@@ -36,15 +33,14 @@ async function testGemini() {
         for (const modelName of candidateModels) {
             console.log(`\nTesting ${modelName}...`);
             try {
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const prompt = "Write a haiku about a robot.";
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
+                const completion = await openai.chat.completions.create({
+                    model: modelName,
+                    messages: [{ role: "user", content: "Write a haiku about a robot." }]
+                });
+                
                 console.log(`✅ SUCCESS: ${modelName} works!`);
-                console.log(`Response: ${response.text().substring(0, 50)}...`);
+                console.log(`Response: ${completion.choices[0].message.content.substring(0, 50)}...`);
                 // If success, we found our winner, no need to test others if we want to save quota
-                // But let's find the *best* working one. 2.5 is better than 2.0 lite.
-                // If 2.5 works, we are good.
                 break;
             } catch (e) {
                 console.error(`❌ FAILED: ${modelName}`);
@@ -53,9 +49,6 @@ async function testGemini() {
                     console.log("   -> Model not found or not supported.");
                 } else if (e.message.includes("429")) {
                     console.log("   -> Rate limited (Model exists but quota exceeded).");
-                    if (e.message.includes("limit: 0")) {
-                        console.log("   -> Quota limit is 0 (Access might be restricted).");
-                    }
                 } else {
                     console.log(`   -> Error: ${e.message.split('\n')[0]}`);
                 }
@@ -66,4 +59,4 @@ async function testGemini() {
     }
 }
 
-testGemini();
+testOpenRouter();

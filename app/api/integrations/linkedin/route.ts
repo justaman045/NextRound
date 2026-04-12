@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
+import pdfParse from "pdf-parse";
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Initialize OpenRouter via OpenAI client
+const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "" });
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,14 +14,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
         }
 
-        // 1. Read PDF as Base64 (Gemini Native Input)
+        // 1. Read PDF and Parse Text
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const base64Data = buffer.toString("base64");
+        const pdfData = await pdfParse(buffer);
+        const parsedText = pdfData.text;
 
-        // 2. AI Parsing with Gemini
-        // We instruct it to return strictly a JSON snippet matching our UserProfile structure
-        const model = genAI.getGenerativeModel({ model: "gemma-3-12b-it" });
+        // 2. AI Parsing with OpenRouter
 
         const prompt = `
             You are a Data Extraction Specialist. 
@@ -75,20 +75,17 @@ export async function POST(req: NextRequest) {
             6. Extract "Skills" into a comma-separated string.
             7. If "Projects" section exists, extract it. If not, check description for project mentions.
             8. **IMPORTANT**: Return ONLY the JSON object. Do not include markdown formatting like \`\`\`json.
+            
+            **PDF Content:**
+            ${parsedText}
         `;
 
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: "application/pdf",
-                },
-            },
-        ]);
+        const completion = await openai.chat.completions.create({
+            model: "openai/gpt-oss-120b:free",
+            messages: [{ role: "user", content: prompt }]
+        });
 
-        const response = await result.response;
-        const jsonString = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const jsonString = (completion.choices[0].message.content || "").replace(/```json/g, '').replace(/```/g, '').trim();
 
         let extractedData;
         try {

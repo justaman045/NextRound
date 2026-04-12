@@ -3,15 +3,18 @@
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import WaitlistForm from "@/components/WaitlistForm";
 
-import modelsList from "@/models_list.json";
 import { getSystemConfig } from "@/lib/firestore";
 import { useEffect, useState } from "react";
+import { getLargestFreeModel } from "@/actions/openrouter";
 
 export default function Hero() {
     const { user, signInWithGoogle } = useAuth();
+    const router = useRouter();
     const [systemMode, setSystemMode] = useState<"development" | "production">("production");
+    const [modelName, setModelName] = useState<string>("Loading Models...");
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -19,11 +22,15 @@ export default function Hero() {
             if (config?.mode) setSystemMode(config.mode);
         };
         fetchConfig();
+
+        const fetchModel = async () => {
+            const largest = await getLargestFreeModel();
+            setModelName(largest);
+        };
+        fetchModel();
     }, []);
 
-    // Find the latest model or default to a specific one
-    const defaultModel = modelsList.models.find(m => m.name === "models/gemini-2.5-flash") || modelsList.models[0];
-    const modelName = defaultModel.displayName;
+    // We update this via state natively now
 
     return (
         <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
@@ -63,12 +70,12 @@ export default function Hero() {
                                     Start for Free
                                 </button>
                             ) : (
-                                <Link
-                                    href="/profile"
+                                <button
+                                    onClick={() => router.push("/profile")}
                                     className="w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:bg-gray-200 transition-all transform hover:-translate-y-1 shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] inline-flex items-center justify-center gap-2"
                                 >
                                     Dashboard <ArrowRight className="w-5 h-5" />
-                                </Link>
+                                </button>
                             )}
 
                             <a href="#pricing" className="w-full sm:w-auto px-8 py-4 glass-panel rounded-full font-bold text-lg hover:bg-white/5 transition-all flex items-center justify-center gap-2 group">

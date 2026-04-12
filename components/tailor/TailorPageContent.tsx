@@ -61,6 +61,10 @@ export default function TailorPage() {
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [loadingTemplates, setLoadingTemplates] = useState(true);
 
+    // Dynamic Preview Scaling State
+    const [previewScale, setPreviewScale] = useState(0.5);
+    const previewContainerRef = useRef<HTMLDivElement>(null);
+
     // LaTeX State
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -74,6 +78,27 @@ export default function TailorPage() {
 
     // Subscription State
     const [subscription, setSubscription] = useState<any>(null);
+
+    // Fluid Preview Resizing
+    useEffect(() => {
+        const updateScale = () => {
+            if (previewContainerRef.current) {
+                const containerWidth = previewContainerRef.current.clientWidth;
+                // A4 is roughly 794px wide. Leave 40px safe margin (20px each side).
+                const targetScale = Math.min(1.2, (containerWidth - 40) / 794);
+                setPreviewScale(targetScale > 0.2 ? targetScale : 0.5);
+            }
+        };
+
+        // Delay slight execution to ensure CSS Grid has settled
+        const timer = setTimeout(updateScale, 100);
+        window.addEventListener('resize', updateScale);
+        
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('resize', updateScale);
+        };
+    }, []);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -222,7 +247,11 @@ export default function TailorPage() {
                 pageLength
             });
 
-            const { data: tailoredData, score } = await tailorResume(masterProfile, jobDescription, selectedModel, pageLength);
+            const { data: tailoredData, score, pageCount } = await tailorResume(masterProfile, jobDescription, selectedModel, pageLength);
+
+            if (pageCount) {
+                setPageLength(pageCount);
+            }
 
             const finalProfile = {
                 ...masterProfile,
@@ -396,11 +425,23 @@ export default function TailorPage() {
                                         </div>
                                     </div>
                                     <div>
+                                        <label className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2 block">Target Length</label>
+                                        <select 
+                                            value={pageLength}
+                                            onChange={(e) => setPageLength(e.target.value as "1" | "2" | "auto" as any)}
+                                            className="glass-input w-full p-3 rounded-xl text-sm outline-none cursor-pointer focus:ring-2 focus:ring-purple-500/50 transition-all"
+                                        >
+                                            <option className="bg-gray-900 text-white py-2" value="auto">Auto-Detect (Based on Experience)</option>
+                                            <option className="bg-gray-900 text-white py-2" value="1">Strictly 1 Page (Concise & Impactful)</option>
+                                            <option className="bg-gray-900 text-white py-2" value="2">Up to 2 Pages (Rich & Detailed)</option>
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2 block">Job Description</label>
                                         <textarea
                                             value={jobDescription}
                                             onChange={(e) => setJobDescription(e.target.value)}
-                                            className="glass-input w-full p-5 rounded-xl resize-none text-sm leading-relaxed min-h-[300px]"
+                                            className="glass-input w-full p-5 rounded-xl resize-none text-sm leading-relaxed min-h-[220px]"
                                             placeholder="Paste the full job description here to let our AI analyze keyword matches and tailor your resume..."
                                         />
                                     </div>
@@ -449,8 +490,8 @@ export default function TailorPage() {
                                     </div>
                                 )}
 
-                                <div className="flex-1 bg-black/40 rounded-xl relative overflow-y-auto border border-white/5">
-                                    <div className="min-h-full flex flex-col items-center justify-center py-8">
+                                <div ref={previewContainerRef} className="flex-1 bg-black/40 rounded-xl relative overflow-y-auto overflow-x-hidden border border-white/5 w-full">
+                                    <div className="min-h-full flex flex-col items-center py-8 w-full">
                                         {/* Preview Content */}
                                         {(tailoredProfile || masterProfile) ? (
                                             <>
@@ -474,8 +515,20 @@ export default function TailorPage() {
                                                         title="Resume Preview"
                                                     />
                                                 ) : (
-                                                    <div className="scale-[0.45] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white">
+                                                    <div 
+                                                        className="origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white"
+                                                        style={{ 
+                                                            transform: `scale(${previewScale})`,
+                                                            marginBottom: `-${(1 - previewScale) * (contentRef.current?.offsetHeight || 1120)}px` 
+                                                        }}
+                                                    >
                                                         <div ref={contentRef} className="relative" style={{ width: '210mm' }}>
+                                                            {/* Visual Page 1/Page 2 Divider for 2-Page mode */}
+                                                            {pageLength === "2" && (
+                                                                <div className="absolute top-[297mm] left-0 w-full border-t-2 border-dashed border-blue-400 z-50 pointer-events-none print:hidden flex justify-center opacity-80">
+                                                                    <span className="bg-blue-400 text-white text-[10px] font-bold px-3 py-1 rounded-b uppercase tracking-widest shadow-sm">Page 2 Boundary</span>
+                                                                </div>
+                                                            )}
                                                             {/* Use tailoredProfile if available, else masterProfile for preview */}
                                                             <SelectedComponent
                                                                 data={(tailoredProfile || masterProfile) as UserProfile}

@@ -1,28 +1,8 @@
 import { Zap, Cpu, Sparkles, Beaker, AlignHorizontalDistributeEndIcon } from "lucide-react";
 
-export const AI_MODELS = [
-    {
-        id: "gemini-2.5-flash",
-        name: "Gemini 2.5 Flash",
-        description: "Balanced speed & intelligence (New)",
-        icon: Zap,
-        color: "text-amber-400"
-    },
-    {
-        id: "gemini-2.5-pro",
-        name: "Gemini 2.5 Pro",
-        description: "Best Quality for Reasoning",
-        icon: Sparkles,
-        color: "text-purple-400"
-    },
-    {
-        id: "gemini-2.5-flash-lite",
-        name: "Gemini 2.5 Flash Lite",
-        description: "Fastest response, high limits",
-        icon: Cpu,
-        color: "text-green-400"
-    }
-];
+import { useFreeModels } from "@/hooks/useFreeModels";
+
+export const FALLBACK_MODEL_ID = "google/gemma-3-12b-it:free";
 
 interface ModelSelectorProps {
     selectedModel: string;
@@ -31,13 +11,18 @@ interface ModelSelectorProps {
 }
 
 export default function ModelSelector({ selectedModel, onSelect, disabled }: ModelSelectorProps) {
+    const { models, loading } = useFreeModels();
+
+    if (loading) {
+        return <div className="text-xs text-gray-500 animate-pulse">Loading models...</div>;
+    }
 
     return (
         <div className="relative">
             <label className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2 block">AI Model</label>
             <div className="grid grid-cols-1 gap-2">
-                {AI_MODELS.map((model) => {
-                    const Icon = model.icon;
+                {models.map((model) => {
+                    const Icon = Cpu; // Generic icon since icons are not serialized from server
                     const isSelected = selectedModel === model.id;
                     return (
                         <button

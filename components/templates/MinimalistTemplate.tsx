@@ -97,11 +97,11 @@ export default function MinimalistTemplate({ data, isCompact = false, scale = 1,
                 )}
 
                 {/* Projects */}
-                {data.projects && data.projects.filter(p => !p.id?.startsWith("gh_") || p.imported).length > 0 && (
+                {data.projects && data.projects.filter(p => p.imported !== false).length > 0 && (
                     <div className="mb-2">
                         <h2 className={`font-bold uppercase border-b border-gray-300 pb-1 mb-2 tracking-wider page-break-inside-avoid ${isCompact ? 'text-[14pt]' : 'text-[16pt]'}`} style={{ breakAfter: 'avoid' }}>Projects</h2>
                         <div className="space-y-2">
-                            {data.projects.filter(p => !p.id?.startsWith("gh_") || p.imported).map((proj, idx) => (
+                            {data.projects.filter(p => p.imported !== false).map((proj, idx) => (
                                 <div key={proj.id || idx} className="break-inside-avoid page-break-inside-avoid">
                                     <h3 className={`font-bold mb-0.5 ${isCompact ? 'text-[11pt]' : 'text-[12pt]'}`}>{proj.name}</h3>
                                     <div className={`text-gray-700 leading-snug whitespace-pre-wrap ${isCompact ? 'text-[10pt]' : 'text-[11pt]'}`}>
