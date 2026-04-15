@@ -40,7 +40,7 @@ export default async function ResumePreviewPage({ params }: PreviewPageProps) {
             */}
             <SelectedTemplate data={resume.data} />
             
-            <style jsx global>{`
+            <style dangerouslySetInnerHTML={{ __html: `
                 body {
                     margin: 0;
                     padding: 0;
@@ -50,7 +50,7 @@ export default async function ResumePreviewPage({ params }: PreviewPageProps) {
                     size: auto;
                     margin: 0;
                 }
-            `}</style>
+            ` }} />
         </div>
     );
 }
