@@ -12,7 +12,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Profile data is required" }, { status: 400 });
         }
 
-        const modelName = model || "openai/gpt-oss-120b:free";
+        const modelName = model || "openrouter/free";
         let systemPrompt = "";
 
         if (source === "linkedin") {
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         } catch (error: any) {
             console.warn(`Primary model ${modelName} failed: `, error.message);
             const completion = await openai.chat.completions.create({
-                model: "openai/gpt-oss-120b:free",
+                model: "openrouter/free",
                 messages: [{ role: "user", content: systemPrompt }]
             });
             responseText = completion.choices[0].message.content || "";

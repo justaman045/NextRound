@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { getUserResumes, saveUserResume } from "@/lib/firestore";
 import { UserResume, UserProfile, Template } from "@/types";
-import { ArrowLeft, Loader2, Save, PenTool, Layout, Download, Trash2, Plus, RefreshCw, Sparkles, FileCode } from "lucide-react";
+import { ArrowLeft, Loader2, Save, PenTool, Layout, Download, Trash2, Plus, RefreshCw, Sparkles, FileCode, ArchiveRestore, Target, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { collection, getDocs, query } from "firebase/firestore";
@@ -12,8 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import TemplateSelector from "@/components/tailor/TemplateSelector";
 import { useReactToPrint } from "react-to-print";
 import { getUserProfile } from "@/lib/firestore";
-
-import PageBreaks from "./PageBreaks";
+import { useFreeModels } from "@/hooks/useFreeModels";
 
 // Templates
 import ModernTemplate from "@/components/templates/ModernTemplate";
@@ -41,11 +40,17 @@ export default function ResumeStudio() {
     const [resumeTitle, setResumeTitle] = useState("");
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [totalPages, setTotalPages] = useState(1);
+    const [selectedEnhanceModel, setSelectedEnhanceModel] = useState<string>("");
 
     const [saving, setSaving] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [enhancingField, setEnhancingField] = useState<string | null>(null);
     const [templates, setTemplates] = useState<Template[]>([]);
+    const [evaluatingAts, setEvaluatingAts] = useState(false);
+    const [atsSuggestions, setAtsSuggestions] = useState<string[]>([]);
+    const [atsAnalysis, setAtsAnalysis] = useState("");
+    const [showAtsModal, setShowAtsModal] = useState(false);
+    const [tempJd, setTempJd] = useState("");
 
     const contentRef = useRef<HTMLDivElement>(null);
     const reactToPrintFn = useReactToPrint({ contentRef });
@@ -122,8 +127,9 @@ export default function ResumeStudio() {
 
             await saveUserResume(user.uid, updatedResume);
 
-            // Update local list
+            // Update local list and active save-state
             setResumes(prev => prev.map(r => r.id === updatedResume.id ? updatedResume : r));
+            setSelectedResume(updatedResume);
             toast.success("Resume saved successfully");
         } catch (error) {
             console.error("Save failed", error);
@@ -133,34 +139,39 @@ export default function ResumeStudio() {
         }
     };
 
-    // Sync with Master Profile Handler
-    const handleSyncWithMaster = async () => {
-        if (!user) return;
+    // Revert Changes Handler
+    const handleRevertChanges = () => {
+        if (!selectedResume) return;
 
-        if (!window.confirm("This will overwrite your current resume changes with data from your Master Profile. Are you sure?")) return;
+        if (!window.confirm("This will overwrite your current unsaved changes and revert to the last saved state. Are you sure?")) return;
 
-        setSyncing(true);
-        try {
-            const masterProfile = await getUserProfile(user.uid);
-            if (!masterProfile) {
-                toast.error("Could not fetch Master Profile");
-                return;
-            }
+        // Deep copy from the last saved state (which is the unmodified AI output if never saved before)
+        setEditorData(JSON.parse(JSON.stringify(selectedResume.data)));
+        setResumeTitle(selectedResume.title || "Untitled Resume");
+        setSelectedTemplateId(selectedResume.templateId || (templates.length > 0 ? templates[0].id || null : "modern"));
 
-            // Deep copy to ensure no reference issues
-            setEditorData(JSON.parse(JSON.stringify(masterProfile)));
+        toast.success("Reverted to saved state!");
+    };
 
-            toast.success("Reset to Master Profile data!");
-        } catch (error) {
-            console.error("Sync failed", error);
-            toast.error("Failed to sync with Master Profile.");
-        } finally {
-            setSyncing(false);
+    // Restore Original AI Handler
+    const handleRestoreOriginal = () => {
+        if (!selectedResume || !selectedResume.originalData) {
+            toast.error("Original AI snapshot not found for this older generated resume.");
+            return;
         }
+
+        if (!window.confirm("WARNING: This will erase ALL manual edits and saves, completely restoring the resume to the exact original state the AI generated. Proceed?")) return;
+
+        setEditorData(JSON.parse(JSON.stringify(selectedResume.originalData)));
+        setResumeTitle(selectedResume.title || "Untitled Resume");
+        setSelectedTemplateId(selectedResume.templateId || (templates.length > 0 ? templates[0].id || null : "modern"));
+
+        toast.success("Restored to Original AI state!");
     };
 
     // AI Enhance Handler
-    const handleEnhance = async (type: "summary" | "experience" | "skills", text: string, context?: string, fieldPath?: string) => {
+    const handleEnhance = async (type: "summary" | "experience" | "skills" | "project", text: string, context?: string, fieldPath?: string) => {
+        if (!selectedEnhanceModel) return toast.error("Please select an AI Model from the panel above first.");
         if (!text) return toast.error("Please enter some text to enhance");
 
         setEnhancingField(fieldPath || type);
@@ -172,7 +183,7 @@ export default function ResumeStudio() {
                     text,
                     type,
                     context,
-                    model: "gemini-2.5-flash"
+                    model: selectedEnhanceModel
                 })
             });
 
@@ -199,6 +210,19 @@ export default function ResumeStudio() {
                     setEditorData({ ...editorData, experience: newExp });
                     toast.success("Experience block enhanced!");
                 }
+            } else if (type === "project" && fieldPath) {
+                const index = parseInt(fieldPath.split("[")[1].replace("]", ""));
+                if (!isNaN(index) && editorData && editorData.projects) {
+                    const newProj = [...editorData.projects];
+                    newProj[index] = {
+                        ...newProj[index],
+                        name: data.name || newProj[index].name,
+                        description: data.description || newProj[index].description,
+                        technologies: data.technologies || newProj[index].technologies
+                    };
+                    setEditorData({ ...editorData, projects: newProj });
+                    toast.success("Project enhanced!");
+                }
             }
 
         } catch (error) {
@@ -206,6 +230,62 @@ export default function ResumeStudio() {
             toast.error("AI Enhancement failed. Please try again.");
         } finally {
             setEnhancingField(null);
+        }
+    };
+
+    const handleEvaluateAts = async () => {
+        if (!editorData || !selectedResume) return;
+        
+        const jdToUse = tempJd || selectedResume.jobDescription;
+        if (!jdToUse) {
+            toast.error("No job description found. Please add one first.");
+            setShowAtsModal(true);
+            return;
+        }
+
+        setEvaluatingAts(true);
+        try {
+            const res = await fetch("/api/ai/evaluate-ats", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    resumeData: editorData,
+                    jobDescription: jdToUse,
+                    model: selectedEnhanceModel || "openrouter/free"
+                })
+            });
+
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            // Update local state
+            setSelectedResume(prev => prev ? ({ 
+                ...prev, 
+                score: data.score,
+                jobDescription: jdToUse 
+            }) : null);
+            
+            setAtsSuggestions(data.suggestions || []);
+            setAtsAnalysis(data.analysis || "");
+            
+            // Auto-save to Firestore
+            const updatedResume = {
+                ...selectedResume,
+                score: data.score,
+                jobDescription: jdToUse,
+                data: editorData,
+                updatedAt: new Date().toISOString()
+            };
+            await saveUserResume(user!.uid, updatedResume);
+            
+            toast.success(`ATS Score Updated: ${data.score}%`);
+            setShowAtsModal(true); // Show the detailed results
+            
+        } catch (error) {
+            console.error("Evaluation failed", error);
+            toast.error("Failed to re-evaluate ATS score");
+        } finally {
+            setEvaluatingAts(false);
         }
     };
 
@@ -309,14 +389,32 @@ export default function ResumeStudio() {
                     />
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleSyncWithMaster}
-                        disabled={syncing}
-                        className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg font-medium text-xs transition-all border border-white/5"
-                        title="Reset to Master Profile"
+                    <select
+                        onChange={(e) => setSelectedEnhanceModel(e.target.value)}
+                        value={selectedEnhanceModel}
+                        className="bg-transparent border border-white/20 text-gray-300 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-purple-500 w-40 text-ellipsis hover:bg-white/5 transition-colors cursor-pointer"
                     >
-                        {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                        Reset to Master
+                        <option value="" disabled className="bg-[#1a1a1a]">Select AI Engine</option>
+                        {availableModels.map(model => (
+                            <option key={model.id} value={model.id} className="bg-[#1a1a1a]">{model.name}</option>
+                        ))}
+                    </select>
+                    <div className="h-4 w-px bg-white/10 mx-1" />
+                    <button
+                        onClick={handleRestoreOriginal}
+                        className="flex items-center gap-2 px-3 py-2 bg-red-500/5 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded-lg font-medium text-xs transition-all border border-red-500/10"
+                        title="Erase all edits and restore original AI generation state"
+                    >
+                        <ArchiveRestore className="w-4 h-4" />
+                        Original AI
+                    </button>
+                    <button
+                        onClick={handleRevertChanges}
+                        className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg font-medium text-xs transition-all border border-white/5"
+                        title="Undo Unsaved Changes"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        Undo Unsaved
                     </button>
                     <button
                         onClick={() => reactToPrintFn()}
@@ -336,6 +434,122 @@ export default function ResumeStudio() {
                 </div>
             </div>
 
+            {/* ATS Score Floating Badge */}
+            <div className="absolute top-20 right-8 z-30 animate-fade-in-left">
+                <button 
+                    onClick={() => {
+                        setTempJd(selectedResume.jobDescription || "");
+                        setShowAtsModal(true);
+                    }}
+                    className="glass-panel p-3 rounded-2xl border-white/10 hover:border-purple-500/50 transition-all group flex items-center gap-3 shadow-2xl"
+                >
+                    <div className={`p-2 rounded-xl ${
+                        (selectedResume.score || 0) >= 90 ? "bg-green-500/20 text-green-400" :
+                        (selectedResume.score || 0) >= 75 ? "bg-yellow-500/20 text-yellow-400" :
+                        "bg-red-500/20 text-red-400"
+                    }`}>
+                        <Target className="w-5 h-5" />
+                    </div>
+                    <div className="text-left pr-2">
+                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">ATS Match</p>
+                        <p className="text-xl font-black text-white">{selectedResume.score || 0}%</p>
+                    </div>
+                </button>
+            </div>
+
+            {/* ATS Analysis Modal */}
+            {showAtsModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0f0f12] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Target className="w-6 h-6 text-purple-400" />
+                                ATS Score Re-evaluation
+                            </h3>
+                            <button onClick={() => setShowAtsModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                                <ArchiveRestore className="w-5 h-5 rotate-45" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                            <div className="flex items-center gap-6">
+                                <div className="relative w-24 h-24 flex items-center justify-center">
+                                    <svg className="w-full h-full transform -rotate-90">
+                                        <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/5" />
+                                        <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" strokeWidth="8" 
+                                            strokeDasharray={`${(selectedResume.score || 0) * 2.51} 251`}
+                                            className={`${
+                                                (selectedResume.score || 0) >= 90 ? "text-green-500" :
+                                                (selectedResume.score || 0) >= 75 ? "text-yellow-500" :
+                                                "text-red-500"
+                                            } transition-all duration-1000`}
+                                        />
+                                    </svg>
+                                    <span className="absolute text-2xl font-black text-white">{selectedResume.score || 0}%</span>
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-white text-lg">Analysis Result</h4>
+                                    <p className="text-gray-400 text-sm italic">{atsAnalysis || "Your resume has been analyzed against the target job description. Re-evaluate to see latest analysis."}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                    <PenTool className="w-4 h-4" /> Target Job Description
+                                </h4>
+                                <textarea 
+                                    className="w-full h-32 bg-white/5 border border-white/10 rounded-xl p-4 text-xs text-gray-300 focus:border-purple-500 outline-none resize-none scrollbar-hide"
+                                    placeholder="Paste the Job Description here to re-evaluate..."
+                                    value={tempJd}
+                                    onChange={(e) => setTempJd(e.target.value)}
+                                />
+                                <p className="text-[10px] text-gray-500 italic">Changing the JD will update the context for subsequent AI enhancements.</p>
+                            </div>
+
+                            {atsSuggestions.length > 0 && (
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                        <Sparkles className="w-4 h-4 text-purple-400" /> AI Suggestions
+                                    </h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {atsSuggestions.map((s, i) => (
+                                            <div key={i} className="flex gap-3 p-3 rounded-xl bg-purple-500/5 border border-purple-500/10 text-gray-300 text-sm">
+                                                <div className="mt-1"><CheckCircle2 className="w-4 h-4 text-purple-400" /></div>
+                                                {s}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!tempJd && !selectedResume.jobDescription && (
+                                <div className="flex gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-200/80 text-sm">
+                                    <AlertCircle className="w-5 h-5 shrink-0" />
+                                    <p>Please paste the job description above to enable AI-powered re-evaluation and personalized suggestions.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t border-white/10 bg-white/5 flex gap-3">
+                            <button 
+                                onClick={() => setShowAtsModal(false)}
+                                className="flex-1 px-4 py-3 rounded-xl border border-white/10 text-gray-400 font-bold hover:bg-white/5 transition-all"
+                            >
+                                Close
+                            </button>
+                            <button 
+                                onClick={handleEvaluateAts}
+                                disabled={evaluatingAts || (!tempJd && !selectedResume.jobDescription)}
+                                className="flex-[2] px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-purple-900/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                {evaluatingAts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+                                {evaluatingAts ? "Evaluating..." : "Update Score & Analyze"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 flex overflow-hidden">
                 {/* LEFT: EDITING PANEL */}
                 <div className="w-[400px] lg:w-[480px] bg-[#0A0A0A] border-r border-white/10 overflow-y-auto p-6 space-y-8 pb-32">
@@ -351,6 +565,7 @@ export default function ResumeStudio() {
                             templates={templates}
                             selectedId={selectedTemplateId}
                             onSelect={setSelectedTemplateId}
+                            previewData={editorData}
                         />
                     </div>
 
@@ -599,16 +814,30 @@ export default function ResumeStudio() {
                                         }}
                                         placeholder="Project Name"
                                     />
-                                    <textarea
-                                        className="w-full h-24 bg-black/20 border border-white/10 rounded p-2 text-xs text-gray-300 focus:border-purple-500 outline-none resize-y"
-                                        value={proj.description}
-                                        onChange={(e) => {
-                                            const newProj = editorData.projects ? [...editorData.projects] : [];
-                                            newProj[idx].description = e.target.value;
-                                            setEditorData({ ...editorData, projects: newProj });
-                                        }}
-                                        placeholder="Project Description..."
-                                    />
+                                    <div className="relative">
+                                        <textarea
+                                            className="w-full h-24 bg-black/20 border border-white/10 rounded p-2 text-xs text-gray-300 focus:border-purple-500 outline-none resize-y pr-20"
+                                            value={proj.description}
+                                            onChange={(e) => {
+                                                const newProj = editorData.projects ? [...editorData.projects] : [];
+                                                newProj[idx].description = e.target.value;
+                                                setEditorData({ ...editorData, projects: newProj });
+                                            }}
+                                            placeholder="Project Description..."
+                                        />
+                                        <button
+                                            onClick={() => handleEnhance("project", proj.description, proj.name, `project[${idx}]`)}
+                                            disabled={enhancingField === `project[${idx}]`}
+                                            className="absolute top-1 right-1 text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-purple-500/20 hover:border-purple-500/40 transition-all disabled:opacity-50"
+                                        >
+                                            {enhancingField === `project[${idx}]` ? (
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                            ) : (
+                                                <Sparkles className="w-3 h-3" />
+                                            )}
+                                            AI Rewrite
+                                        </button>
+                                    </div>
                                     <input
                                         className="w-full bg-transparent border-b border-white/10 text-gray-500 text-xs py-1 focus:border-purple-500 outline-none"
                                         value={proj.technologies || ""}
@@ -690,7 +919,6 @@ export default function ResumeStudio() {
                                 </div>
                             ) : (
                                 <>
-                                    <PageBreaks contentRef={contentRef} scale={1} onPageCountChange={setTotalPages} />
                                     <SelectedComponent data={editorData} />
                                 </>
                             )}

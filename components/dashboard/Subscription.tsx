@@ -71,7 +71,7 @@ export default function SubscriptionView({ subscription }: SubscriptionViewProps
 
                 // 2. Open Razorpay Checkout
                 const options = {
-                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_YourKeyIdHere',
+                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                     amount: orderData.amount,
                     currency: orderData.currency,
                     name: "NextRound Pro",
@@ -173,7 +173,7 @@ export default function SubscriptionView({ subscription }: SubscriptionViewProps
                     <p className="text-2xl font-bold text-white capitalize">
                         {subscription.plan === 'pro' ? (isProSaver ? plans.pro_saver.name : plans.pro.name) : plans.free.name}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">{subscription.plan === 'pro' ? 'Next billing date: Jan 23, 2027' : 'Forever free'}</p>
+                    <p className="text-xs text-gray-500 mt-1">{subscription.plan === 'pro' ? (subscription.currentPeriodEnd && subscription.currentPeriodEnd !== 'N/A' ? `Renews: ${new Date(subscription.currentPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : 'Active subscription') : 'Forever free'}</p>
                 </div>
             </div>
 

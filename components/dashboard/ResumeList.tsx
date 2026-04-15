@@ -293,17 +293,34 @@ export default function ResumeList() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {resumes.map((resume) => (
                         <div key={resume.id} className="group relative bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:bg-white/[0.07]">
-                            {/* Preview / Thumbnail Placeholder */}
-                            <div className="aspect-[3/4] bg-gradient-to-br from-gray-800 to-gray-900 border-b border-white/5 relative p-4 flex flex-col items-center justify-center group-hover:scale-[1.02] transition-transform duration-500">
-                                {/* Mini Doc Preview */}
-                                <div className="w-3/4 h-3/4 bg-white/90 shadow-xl rounded-sm p-4 text-[6px] text-gray-800 overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity">
-                                    <div className="w-12 h-12 bg-gray-200 rounded-full mb-2"></div>
-                                    <div className="h-2 w-24 bg-gray-800 mb-1 rounded"></div>
-                                    <div className="h-1.5 w-16 bg-gray-400 mb-4 rounded"></div>
-                                    <div className="space-y-1">
-                                        {[1, 2, 3, 4, 5, 6, 7].map(i => <div key={i} className="h-1 w-full bg-gray-300 rounded"></div>)}
+                            {/* Preview / Thumbnail */}
+                            <div className="aspect-[3/4] bg-white border-b border-white/5 relative flex flex-col items-center justify-start group-hover:scale-[1.02] transition-transform duration-500 overflow-hidden">
+                                {resume.data ? (() => {
+                                    const template = templates.find(t => t.id === resume.templateId);
+                                    const ThumbnailComponent = template?.componentKey ? TEMPLATE_MAP[template.componentKey] : ModernTemplate;
+
+                                    if (ThumbnailComponent) {
+                                        return (
+                                            <div className="w-full h-full scale-[0.25] origin-top border-none pointer-events-none">
+                                                <div style={{ width: '210mm' }}>
+                                                    <ThumbnailComponent data={resume.data} isCompact={true} />
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8 text-center">
+                                            <FileText className="w-12 h-12 mb-4 opacity-20" />
+                                            <p className="text-[10px] font-bold uppercase tracking-wider">Preview Available</p>
+                                        </div>
+                                    );
+                                })() : (
+                                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                        <FileText className="w-12 h-12 mb-4 opacity-20" />
+                                        <p className="text-[10px] font-bold uppercase tracking-wider">No Data</p>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Overlay Actions */}
                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm">

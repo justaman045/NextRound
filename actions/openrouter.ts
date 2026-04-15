@@ -55,7 +55,7 @@ export async function getTopFreeModels(): Promise<AIModelBase[]> {
     if (!freeModels || freeModels.length === 0) {
         // Safe robust fallback
         return [
-            { id: "openai/gpt-oss-120b:free", name: "OpenAI: GPT-OSS 120B", description: "Default active model.", context_length: 8192 }
+            { id: "openrouter/free", name: "OpenRouter Free Auto-Routing", description: "Default active model.", context_length: 8192 }
         ];
     }
 

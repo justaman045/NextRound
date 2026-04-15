@@ -18,8 +18,8 @@ export function useFreeModels() {
     // Start with a safe default matching our universal fallback
     const [models, setModels] = useState<UIModel[]>([
         {
-            id: "openai/gpt-oss-120b:free",
-            name: "OpenAI: GPT-OSS 120B",
+            id: "openrouter/free",
+            name: "OpenRouter Free Auto-Routing",
             description: "Default active model.",
             context_length: 8192,
             color: "text-purple-400"

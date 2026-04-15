@@ -97,7 +97,7 @@ export async function convertLatexToTemplate(latexCode: string): Promise<string>
 
   try {
     const completion = await openai.chat.completions.create({
-        model: "openai/gpt-oss-120b:free",
+        model: "openrouter/free",
         messages: [{ role: "user", content: prompt }]
     });
     let text = completion.choices[0].message.content || "";

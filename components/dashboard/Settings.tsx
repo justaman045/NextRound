@@ -28,15 +28,8 @@ export default function Settings() {
         fetchSub();
     }, [user]);
 
-    const handleManageSubscription = async () => {
-        if (!user || !subscription?.razorpayOrderId) {
-            toast.error("No active subscription found to manage.");
-            return;
-        }
-
-        // Razorpay management usually happens via their dashboard or custom UI.
-        // For now, we redirect to the subscription tab or suggest contacting support.
-        toast.info("Subscription managed via Razorpay. Please check your email for the invoice or contact support.");
+    const handleManageSubscription = () => {
+        router.push("/profile?tab=subscription");
     };
 
     const handleResetPassword = async () => {

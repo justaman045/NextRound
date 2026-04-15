@@ -31,7 +31,7 @@ export async function POST(request: Request) {
         }
 
         // Fallback or use requested model
-        const selectedModel = modelName || "openai/gpt-oss-120b:free";
+        const selectedModel = modelName || "openrouter/free";
 
         let systemPrompt = "";
         let isJson = false;
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
                 IMPORTANT: Output ONLY valid JSON.`;
                 break;
             case "skills":
-                systemPrompt = "You are an expert resume writer. Improve the following list of skills. Group them logically if possible, or simple ensure they are professional and standard industry terms. Format as a comma-separated list or a clean list. IMPORTANT: Output ONLY the list of skills as plain text.";
+                systemPrompt = "You are an expert resume writer. Categorize the provided skills logically based on their domains (Languages, Frameworks, Tools, etc). YOU MUST format the output exactly as:\nCategory Name: Skill 1, Skill 2\nCategory Name 2: Skill 1\nSeparate each category with a newline. IMPORTANT: Output ONLY the categorized list as plain text.";
                 break;
             default:
                 systemPrompt = "You are an expert resume writer. Improve the clarity, professional tone, and impact of the following text. IMPORTANT: Output ONLY the enhanced text.";
@@ -96,9 +96,9 @@ export async function POST(request: Request) {
             });
             responseText = completion.choices[0].message.content || "";
         } catch (error: any) {
-            console.warn(`Model ${selectedModel} failed, falling back to openai/gpt-oss-120b:free. Error: ${error.message}`);
+            console.warn(`Model ${selectedModel} failed, falling back to openrouter/free. Error: ${error.message}`);
             const completion = await openai.chat.completions.create({
-                model: "openai/gpt-oss-120b:free",
+                model: "openrouter/free",
                 messages: [{ role: "user", content: prompt }]
             });
             responseText = completion.choices[0].message.content || "";

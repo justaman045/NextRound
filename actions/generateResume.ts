@@ -5,7 +5,7 @@ import { UserProfile } from "@/types";
 
 const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "" });
 
-export async function tailorResume(userProfile: UserProfile, jobDescription: string, modelName: string = "openai/gpt-oss-120b:free", pageLength: "1" | "2" | "auto" = "auto"): Promise<{ data: UserProfile, score: number, analysis: string, pageCount?: "1" | "2" }> {
+export async function tailorResume(userProfile: UserProfile, jobDescription: string, modelName: string = "openrouter/free", pageLength: "1" | "2" | "auto" = "auto"): Promise<{ data: UserProfile, score: number, analysis: string, pageCount?: "1" | "2" }> {
   if (!process.env.OPENROUTER_API_KEY && !process.env.GEMINI_API_KEY) {
     throw new Error("OPENROUTER_API_KEY is not set");
   }
@@ -96,9 +96,16 @@ export async function tailorResume(userProfile: UserProfile, jobDescription: str
        - If irrelevant: Keep it brief or focus *only* on soft skills/leadership/reliability.
        - DO NOT invent facts. Only reframe existing experience.
     3. **Skills**: 
-       - Completely regenerate the skills string.
+       - Completely regenerate the skills list.
        - Curate a list of the top 15-20 skills that are a mix of the Candidate's actual skills AND the JD's requirements. 
-       - Prioritize Hard Skills (Languages, Frameworks, Tools) over Soft Skills.
+       - YOU MUST categorize the skills using the exact format:
+         Category Name: Skill 1, Skill 2, Skill 3
+         Category Name 2: Skill 1, Skill 2
+       - Example:
+         Languages: Java, Python, JavaScript
+         Frameworks: React, Django
+         Tools: Git, Docker, Selenium
+       - Separate each category strictly with a newline character.
     4. **Education**: Keep exactly as is.
     5. **Projects**:
        - Select the 2-4 most relevant projects from the 'projects' array that demonstrate skills needed for the JD.
@@ -132,10 +139,10 @@ export async function tailorResume(userProfile: UserProfile, jobDescription: str
       });
       text = completion.choices[0].message.content || "{}";
     } catch (error: any) {
-      console.warn(`Model ${modelName} failed, falling back to openai/gpt-oss-120b:free. Error: ${error.message}`);
+      console.warn(`Model ${modelName} failed, falling back to openrouter/free. Error: ${error.message}`);
       try {
         const fallbackCompletion = await openai.chat.completions.create({
-          model: "openai/gpt-oss-120b:free",
+          model: "openrouter/free",
           max_tokens: 4000,
           response_format: { type: "json_object" },
           messages: [{ role: "user", content: prompt }]

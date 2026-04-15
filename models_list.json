@@ -1054,7 +1054,7 @@
       }
     },
     {
-      "id": "openai/gpt-oss-120b:free",
+      "id": "openrouter/free",
       "canonical_slug": "openai/gpt-oss-120b",
       "hugging_face_id": "openai/gpt-oss-120b",
       "name": "OpenAI: gpt-oss-120b (free)",

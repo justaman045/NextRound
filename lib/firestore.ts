@@ -47,6 +47,26 @@ export const deleteUserResume = async (userId: string, resumeId: string) => {
     await deleteDoc(docRef);
 };
 
+// Versioning / History
+export const saveResumeVersion = async (userId: string, resumeId: string, data: any) => {
+    const historyRef = collection(db, "users", userId, "resumes", resumeId, "history");
+    const newVersionRef = doc(historyRef);
+    await setDoc(newVersionRef, {
+        id: newVersionRef.id,
+        data: data.data,
+        templateId: data.templateId,
+        timestamp: new Date().toISOString(),
+        label: data.label || "Auto-match Save"
+    });
+};
+
+export const getResumeHistory = async (userId: string, resumeId: string): Promise<any[]> => {
+    const historyRef = collection(db, "users", userId, "resumes", resumeId, "history");
+    const q = query(historyRef, orderBy("timestamp", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => doc.data());
+};
+
 export const getUserSubscription = async (userId: string): Promise<Subscription> => {
     const docRef = doc(db, "users", userId, "subscription", "details");
     const docSnap = await getDoc(docRef);

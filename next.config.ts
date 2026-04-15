@@ -5,6 +5,14 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   // @ts-ignore - experimental feature
   allowedDevOrigins: ["192.168.1.128", "localhost:3000", "localhost:3001"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'img.shields.io',
+      },
+    ],
+  },
 };
 
 export default withSentryConfig(nextConfig, {

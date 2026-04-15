@@ -1,6 +1,6 @@
 import { UserProfile } from "@/types";
 import { useRef } from "react";
-import { useDynamicPagination } from "@/hooks/useDynamicPagination";
+
 
 interface Props {
     data: UserProfile;
@@ -11,7 +11,7 @@ interface Props {
 
 export default function FaangPathTemplate({ data, isCompact = false, scale = 1, enablePagination = true }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
-    useDynamicPagination(containerRef, data, scale, enablePagination);
+
 
     // Helper to process bullets
     const getBullets = (text: string) => {
@@ -31,7 +31,7 @@ export default function FaangPathTemplate({ data, isCompact = false, scale = 1, 
     return (
         <div
             ref={containerRef}
-            className={`bg-white text-black mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative font-serif ${isCompact ? 'p-8 max-w-[210mm]' : 'p-10 max-w-[210mm]'}`}
+            className={`bg-white text-black mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative font-serif ${isCompact ? 'p-8 print:py-0 max-w-[210mm]' : 'p-10 print:py-0 max-w-[210mm]'}`}
             style={{ fontFamily: '"Times New Roman", Times, serif' }}
         >
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `calc(100% / ${scale})`, height: `calc(100% / ${scale})` }}>
@@ -126,9 +126,13 @@ export default function FaangPathTemplate({ data, isCompact = false, scale = 1, 
                                         <span className="font-bold text-[11pt] mr-2">{proj.name}</span>
                                         {proj.technologies && <span className="italic text-[11pt]">| {proj.technologies}</span>}
                                     </div>
-                                    <div className="text-[11pt] leading-snug">
-                                        {proj.description}
-                                    </div>
+                                    <ul className="list-disc list-outside ml-4 mt-1 mb-1 space-y-0.5">
+                                        {getBullets(proj.description).map((bullet, idx) => (
+                                            <li key={idx} className="text-[11pt] leading-snug pl-1">
+                                                {bullet}
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
                             ))}
                         </div>

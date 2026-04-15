@@ -44,7 +44,7 @@ export function proxy(request: NextRequest) {
         default-src 'self';
         script-src 'self' 'unsafe-inline' 'unsafe-eval' *.posthog.com *.google-analytics.com *.razorpay.com apis.google.com www.gstatic.com www.googletagmanager.com;
         style-src 'self' 'unsafe-inline';
-        img-src 'self' blob: data: *.googleusercontent.com *.posthog.com *.razorpay.com raw.githubusercontent.com;
+        img-src 'self' blob: data: *.googleusercontent.com *.posthog.com *.razorpay.com raw.githubusercontent.com img.shields.io;
         font-src 'self' data:;
         connect-src 'self' *.googleapis.com *.firebasestorage.app *.firebaseapp.com *.posthog.com *.sentry.io *.razorpay.com raw.githubusercontent.com;
         frame-src 'self' blob: *.razorpay.com *.firebaseapp.com accounts.google.com;

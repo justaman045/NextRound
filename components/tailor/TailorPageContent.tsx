@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Sidebar from "@/components/dashboard/Sidebar";
-import PageBreaks from "@/components/dashboard/PageBreaks";
+
 
 // Map component keys (from Firestore) to actual React Components
 const TEMPLATE_MAP: Record<string, React.FC<{ data: UserProfile }>> = {
@@ -71,7 +71,7 @@ export default function TailorPage() {
     const [savedResumeId, setSavedResumeId] = useState<string | null>(null);
 
     // AI Model
-    const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
+    const [selectedModel, setSelectedModel] = useState("openrouter/free");
 
     const contentRef = useRef<HTMLDivElement>(null);
     const reactToPrintFn = useReactToPrint({ contentRef });
@@ -278,10 +278,11 @@ export default function TailorPage() {
                 templateId: selectedTemplateId || "modern",
                 createdAt: new Date().toISOString(),
                 score: score, // Real AI Score
-                jobDescription: jobDescription.substring(0, 100) + "...",
+                jobDescription: jobDescription,
                 thumbnailUrl: "",
-                pdfUrl: "",
-                data: finalProfile // Save the full tailored profile
+
+                data: finalProfile, // Save the full tailored profile
+                originalData: finalProfile // Immutable snapshot for total resets
             };
 
             await saveUserResume(user.uid, newResume);
@@ -486,6 +487,7 @@ export default function TailorPage() {
                                             templates={templates}
                                             selectedId={selectedTemplateId}
                                             onSelect={setSelectedTemplateId}
+                                            previewData={tailoredProfile || masterProfile || undefined}
                                         />
                                     </div>
                                 )}

@@ -14,9 +14,8 @@
   "dependencies": {
     "@sentry/nextjs": "^10.36.0",
     "@tailwindcss/typography": "^0.5.19",
-    "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.36.1",
     "archiver": "^7.0.1",
+    "docx": "^9.6.1",
     "firebase": "^12.8.0",
     "firebase-admin": "^13.6.0",
     "handlebars": "^4.7.8",

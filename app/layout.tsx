@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "sonner";
 import CookieConsent from "@/components/compliance/CookieConsent";
 import PostHogProvider from "@/components/providers/PostHogProvider";
+import SentryLogger from "@/components/providers/SentryLogger";
 import Script from "next/script";
 
 const geistSans = Geist({
@@ -71,6 +72,7 @@ export default function RootLayout({
             {children}
             <CookieConsent />
             <Toaster theme="dark" position="top-center" richColors />
+            <SentryLogger />
             <Script
               id="razorpay-checkout-js"
               src="https://checkout.razorpay.com/v1/checkout.js"

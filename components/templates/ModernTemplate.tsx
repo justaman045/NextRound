@@ -1,7 +1,7 @@
 import { UserProfile } from "@/types";
 import { Mail, MapPin, Phone, Globe } from "lucide-react";
 import { useRef } from "react";
-import { useDynamicPagination } from "@/hooks/useDynamicPagination";
+
 
 interface Props {
     data: UserProfile;
@@ -12,7 +12,7 @@ interface Props {
 
 export default function ModernTemplate({ data, isCompact = false, scale = 1, enablePagination = true }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
-    useDynamicPagination(containerRef, data, scale, enablePagination);
+
 
     // Helper to process bullets
     const getBullets = (text: string) => {
@@ -27,7 +27,7 @@ export default function ModernTemplate({ data, isCompact = false, scale = 1, ena
     };
 
     return (
-        <div ref={containerRef} className={`bg-white text-gray-800 mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative ${isCompact ? 'p-5 max-w-[210mm]' : 'p-10 max-w-[210mm]'}`}>
+        <div ref={containerRef} className={`bg-white text-gray-800 mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative ${isCompact ? 'p-5 print:py-0 max-w-[210mm]' : 'p-10 print:py-0 max-w-[210mm]'}`}>
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `calc(100% / ${scale})`, height: `calc(100% / ${scale})` }}>
 
                 {/* Header */}
@@ -124,7 +124,13 @@ export default function ModernTemplate({ data, isCompact = false, scale = 1, ena
                                     <div className="flex justify-between items-baseline mb-0.5">
                                         <h3 className={`font-bold text-gray-800 ${isCompact ? 'text-[11pt]' : 'text-[12pt]'}`}>{proj.name}</h3>
                                     </div>
-                                    <p className={`text-gray-700 leading-snug ${isCompact ? 'text-[10pt] leading-[1.1] mb-0.5 tracking-tight' : 'text-[11pt] mb-0.5'}`}>{proj.description}</p>
+                                    <ul className="list-disc list-outside ml-3.5 space-y-1 mb-1 mt-0.5">
+                                        {getBullets(proj.description).map((bullet, idx) => (
+                                            <li key={idx} className={`text-gray-700 leading-snug ${isCompact ? 'text-[10pt] leading-[1.1] tracking-tight' : 'text-[11pt]'}`}>
+                                                {bullet}
+                                            </li>
+                                        ))}
+                                    </ul>
                                     {proj.technologies && (
                                         <div className={`text-[10pt] text-gray-500 italic ${isCompact ? 'text-[9pt]' : ''}`}>
                                             Tech: {proj.technologies}

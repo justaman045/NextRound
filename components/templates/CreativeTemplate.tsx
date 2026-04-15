@@ -1,7 +1,7 @@
 import { UserProfile } from "@/types";
 import { MapPin, Mail, Globe, Phone } from "lucide-react";
 import { useRef } from "react";
-import { useDynamicPagination } from "@/hooks/useDynamicPagination";
+
 
 interface Props {
     data: UserProfile;
@@ -12,7 +12,7 @@ interface Props {
 
 export default function CreativeTemplate({ data, isCompact = false, scale = 1, enablePagination = true }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
-    useDynamicPagination(containerRef, data, scale, enablePagination);
+
 
     if (!data) return null;
 

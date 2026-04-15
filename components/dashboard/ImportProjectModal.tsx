@@ -22,11 +22,11 @@ export default function ImportProjectModal({ project, isOpen, subscription, onCl
     const [enhancing, setEnhancing] = useState(false);
     const [saving, setSaving] = useState(false);
     const { models } = useFreeModels();
-    const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+    const [selectedModel, setSelectedModel] = useState<string>("openrouter/free");
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        if (models.length > 0 && selectedModel === "gemini-2.5-flash") {
+        if (models.length > 0 && selectedModel === "openrouter/free") {
             setSelectedModel(models[0].id);
         } else if (models.length > 0 && !models.find(m => m.id === selectedModel)) {
             setSelectedModel(models[0].id);

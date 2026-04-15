@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import pdfParse from "pdf-parse";
+const pdfParse = require("pdf-parse");
 
 // Initialize OpenRouter via OpenAI client
 const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "" });
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
         `;
 
         const completion = await openai.chat.completions.create({
-            model: "openai/gpt-oss-120b:free",
+            model: "openrouter/free",
             messages: [{ role: "user", content: prompt }]
         });
 

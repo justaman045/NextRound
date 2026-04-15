@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         }
 
         // Default to flash if not provided, else use requested model
-        const selectedModel = modelName || "openai/gpt-oss-120b:free";
+        const selectedModel = modelName || "openrouter/free";
 
         const prompt = `
         You are an expert resume writer. I have a GitHub project that I want to add to my professional resume.
@@ -42,9 +42,9 @@ export async function POST(request: Request) {
             });
             responseText = completion.choices[0].message.content || "";
         } catch (error: any) {
-            console.warn(`Model ${selectedModel} failed, falling back to openai/gpt-oss-120b:free. Error: ${error.message}`);
+            console.warn(`Model ${selectedModel} failed, falling back to openrouter/free. Error: ${error.message}`);
             const completion = await openai.chat.completions.create({
-                model: "openai/gpt-oss-120b:free",
+                model: "openrouter/free",
                 messages: [{ role: "user", content: prompt }]
             });
             responseText = completion.choices[0].message.content || "";

@@ -138,10 +138,19 @@ export interface UserResume {
     templateId: string;
     createdAt: string;
     thumbnailUrl?: string; // Preview image
-    pdfUrl?: string;      // Link to generated PDF
+
     jobDescription?: string; // The JD used to tailor
     score?: number;       // AI Score (0-100)
     data?: UserProfile;   // The tailored profile data
+    originalData?: UserProfile; // The immutable baseline AI generation snapshot
+}
+
+export interface ResumeHistory {
+    id: string;
+    data: UserProfile;
+    timestamp: string;
+    label?: string;
+    templateId?: string;
 }
 
 export interface Subscription {
