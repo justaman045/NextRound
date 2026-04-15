@@ -19,8 +19,8 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options
 
-  org: "resume-saas",
-  project: "resume-saas-core",
+  org: process.env.SENTRY_ORG || "resume-saas",
+  project: process.env.SENTRY_PROJECT || "resume-saas-core",
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,

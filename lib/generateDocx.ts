@@ -152,9 +152,15 @@ function renderTwoColumnLayout(data: UserProfile, templateId: string): any[] {
                                 ],
                                 spacing: { before: 240, after: 60 },
                             }),
-                            new Paragraph({ text: data.email, size: 16 }),
-                            new Paragraph({ text: data.phone, size: 16 }),
-                            new Paragraph({ text: data.location, size: 16 }),
+                            new Paragraph({ 
+                                children: [new TextRun({ text: data.email, size: 16 })] 
+                            }),
+                            new Paragraph({ 
+                                children: [new TextRun({ text: data.phone, size: 16 })] 
+                            }),
+                            new Paragraph({ 
+                                children: [new TextRun({ text: data.location, size: 16 })] 
+                            }),
                             
                             new Paragraph({
                                 children: [
@@ -162,7 +168,9 @@ function renderTwoColumnLayout(data: UserProfile, templateId: string): any[] {
                                 ],
                                 spacing: { before: 400, after: 60 },
                             }),
-                            ...data.skills.split(/[,|•]/).map(s => new Paragraph({ text: s.trim(), size: 16 })),
+                            ...data.skills.split(/[,|•]/).map(s => new Paragraph({ 
+                                children: [new TextRun({ text: s.trim(), size: 16 })] 
+                            })),
                             
                             new Paragraph({
                                 children: [
@@ -170,7 +178,10 @@ function renderTwoColumnLayout(data: UserProfile, templateId: string): any[] {
                                 ],
                                 spacing: { before: 400, after: 60 },
                             }),
-                            ...data.education.map(edu => new Paragraph({ text: `${edu.degree}\n${edu.school}`, size: 16, spacing: { after: 60 } })),
+                            ...data.education.map(edu => new Paragraph({ 
+                                children: [new TextRun({ text: `${edu.degree}\n${edu.school}`, size: 16 })],
+                                spacing: { after: 60 } 
+                            })),
                         ],
                         verticalAlign: VerticalAlign.TOP,
                         margins: { top: 200, left: 200, bottom: 200, right: 200 },
@@ -197,7 +208,9 @@ function renderTwoColumnLayout(data: UserProfile, templateId: string): any[] {
                                     children: [new TextRun({ text: exp.role, bold: true }), new TextRun({ text: ` | ${exp.company}`, italics: true })],
                                     spacing: { before: 120 },
                                 }),
-                                new Paragraph({ text: `${exp.startDate} - ${exp.endDate}`, size: 16, color: "666666" }),
+                                new Paragraph({ 
+                                    children: [new TextRun({ text: `${exp.startDate} - ${exp.endDate}`, size: 16, color: "666666" })] 
+                                }),
                                 ...renderBullets(exp.description)
                             ]),
 
