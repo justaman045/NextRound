@@ -24,7 +24,7 @@ export const logger = {
         }
         // Optionally send warnings to Sentry in production
         if (!isDev) {
-            Sentry.captureMessage(message, { level: 'warning', extra: args });
+            Sentry.captureMessage(message, { level: 'warning', extra: { context: args } });
         }
     },
     error: (message: string, error?: any, ...args: any[]) => {
@@ -32,9 +32,9 @@ export const logger = {
         
         // Always send errors to Sentry
         if (error) {
-            Sentry.captureException(error, { extra: { message, ...args } });
+            Sentry.captureException(error, { extra: { message, context: args } });
         } else {
-            Sentry.captureMessage(message, { level: 'error', extra: args });
+            Sentry.captureMessage(message, { level: 'error', extra: { context: args } });
         }
     }
 };
