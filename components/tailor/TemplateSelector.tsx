@@ -94,10 +94,10 @@ export default function TemplateSelector({ templates, selectedId, onSelect, prev
                         >
                             {/* Live Preview */}
                             {template.type === 'react' && PreviewComponent ? (
-                                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                                <div className="absolute inset-0 overflow-hidden pointer-events-none flex justify-center">
                                     <div style={{
                                         transform: 'scale(0.22)',
-                                        transformOrigin: 'top left',
+                                        transformOrigin: 'top',
                                         width: '210mm',
                                         minHeight: '297mm',
                                     }}>

@@ -229,9 +229,11 @@ export default function ResumeList() {
 
                                             if (PreviewComponent && resumeToDownload.data) {
                                                 return (
-                                                    <div className="scale-[0.45] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white">
-                                                        <div className="relative" style={{ width: '210mm' }}>
-                                                            <PreviewComponent data={resumeToDownload.data} />
+                                                    <div style={{ width: '210mm', flexShrink: 0 }} className="flex justify-center">
+                                                        <div className="scale-[0.45] origin-top shadow-2xl rounded-sm overflow-hidden ring-1 ring-white/10 bg-white" style={{ minHeight: '297mm' }}>
+                                                            <div className="relative" style={{ width: '210mm' }}>
+                                                                <PreviewComponent data={resumeToDownload.data} />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -295,14 +297,23 @@ export default function ResumeList() {
                         <div key={resume.id} className="group relative bg-white/5 border border-white/10 hover:border-purple-500/50 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:bg-white/[0.07]">
                             {/* Preview / Thumbnail */}
                             <div className="aspect-[3/4] bg-white border-b border-white/5 relative flex flex-col items-center justify-start group-hover:scale-[1.02] transition-transform duration-500 overflow-hidden">
-                                {resume.data ? (() => {
+                                {resume.thumbnailUrl ? (
+                                    <div className="absolute inset-0 bg-gray-50 flex items-start justify-center overflow-hidden">
+                                        <img 
+                                            src={resume.thumbnailUrl} 
+                                            alt={resume.title} 
+                                            className="w-full object-cover object-top h-full shadow-inner"
+                                            loading="lazy"
+                                        />
+                                    </div>
+                                ) : resume.data ? (() => {
                                     const template = templates.find(t => t.id === resume.templateId);
                                     const ThumbnailComponent = template?.componentKey ? TEMPLATE_MAP[template.componentKey] : ModernTemplate;
 
                                     if (ThumbnailComponent) {
                                         return (
-                                            <div className="w-full h-full scale-[0.25] origin-top border-none pointer-events-none">
-                                                <div style={{ width: '210mm' }}>
+                                            <div className="absolute inset-0 bg-gray-50/50 pointer-events-none flex justify-center overflow-hidden">
+                                                <div className="scale-[0.22] sm:scale-[0.24] origin-top shadow-2xl bg-white mt-4" style={{ width: '210mm', height: '297mm' }}>
                                                     <ThumbnailComponent data={resume.data} isCompact={true} />
                                                 </div>
                                             </div>

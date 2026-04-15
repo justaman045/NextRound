@@ -54,3 +54,14 @@ export const adminDb = {
         return admin.firestore().batch();
     }
 } as any;
+
+export const adminStorage = {
+    get instance() {
+        if (!admin.apps.length) return null;
+        return admin.storage();
+    },
+    bucket: (name?: string) => {
+        if (!admin.apps.length) throw new Error("Firebase Storage not initialized");
+        return admin.storage().bucket(name || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    }
+} as any;

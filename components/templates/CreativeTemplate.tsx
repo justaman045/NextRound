@@ -17,7 +17,7 @@ export default function CreativeTemplate({ data, isCompact = false, scale = 1, e
     if (!data) return null;
 
     return (
-        <div ref={containerRef} className={`w-[210mm] bg-white text-black min-h-[297mm] overflow-visible flex font-sans leading-tight shadow-none print:shadow-none print:w-[210mm] mx-auto relative ${isCompact ? 'max-w-[210mm]' : 'max-w-[210mm]'}`}>
+        <div ref={containerRef} className={`w-[210mm] bg-white text-black min-h-[297mm] overflow-visible flex font-sans leading-tight shadow-none print:shadow-none print:w-[210mm] mx-auto relative ${isCompact ? 'p-5 print:p-5 max-w-[210mm]' : 'p-8 print:p-8 max-w-[210mm]'}`}>
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `calc(100% / ${scale})`, height: `calc(100% / ${scale})`, display: 'flex' }}>
                 {/* Sidebar (Left) */}
                 <div className={`w-1/3 bg-slate-900 text-white flex flex-col gap-6 ${isCompact ? 'p-4' : 'p-6'}`}>

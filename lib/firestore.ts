@@ -145,6 +145,35 @@ export const upgradeToPro = async (userId: string, billingCycle: 'monthly' | 'se
     });
 };
 
+export const cancelSubscription = async (userId: string) => {
+    const docRef = doc(db, "users", userId, "subscription", "details");
+    await updateDoc(docRef, {
+        status: "canceled",
+        updatedAt: new Date().toISOString()
+    });
+};
+
+export const getBillingHistory = async (userId: string) => {
+    const docRef = doc(db, "users", userId, "subscription", "details");
+    const snapshot = await getDoc(docRef);
+    if (!snapshot.exists()) return [];
+
+    const data = snapshot.data();
+    // Return a list with the current/last active subscription as a history item
+    // In a full implementation, this would query an 'invoices' collection
+    if (data.razorpayOrderId) {
+        return [{
+            id: data.id || "inv_1",
+            date: data.updatedAt || new Date().toISOString(),
+            amount: data.billingCycle === 'semiannual' ? "₹1499" : "₹299",
+            status: "paid",
+            method: "Razorpay",
+            orderId: data.razorpayOrderId
+        }];
+    }
+    return [];
+};
+
 export const toggleIntegration = async (userId: string, platform: string, isConnected: boolean) => {
     const docRef = doc(db, "users", userId, "profile", "master");
 
@@ -172,24 +201,6 @@ export const getSystemConfig = async () => {
 export const updateSystemConfig = async (data: any) => {
     const docRef = doc(db, "system", "config");
     await setDoc(docRef, data, { merge: true });
-};
-
-// Cancel Subscription (Downgrade to free)
-export const cancelSubscription = async (uid: string) => {
-    try {
-        const subRef = doc(db, "users", uid, "subscription", "details");
-        // We set to plan: free, limit: 1
-        // We do NOT reset resumesGenerated because that is lifetime usage.
-        await updateDoc(subRef, {
-            plan: "free",
-            status: "active",
-            "usage.limit": 1
-        });
-        return true;
-    } catch (error) {
-        console.error("Error canceling subscription:", error);
-        throw error;
-    }
 };
 
 

@@ -27,7 +27,7 @@ export default function ModernTemplate({ data, isCompact = false, scale = 1, ena
     };
 
     return (
-        <div ref={containerRef} className={`bg-white text-gray-800 mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative ${isCompact ? 'p-5 print:py-0 max-w-[210mm]' : 'p-10 print:py-0 max-w-[210mm]'}`}>
+        <div ref={containerRef} className={`bg-white text-gray-800 mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative ${isCompact ? 'p-5 print:p-5 max-w-[210mm]' : 'p-10 print:p-10 max-w-[210mm]'}`}>
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `calc(100% / ${scale})`, height: `calc(100% / ${scale})` }}>
 
                 {/* Header */}

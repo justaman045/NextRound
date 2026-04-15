@@ -17,7 +17,7 @@ export default function MinimalistTemplate({ data, isCompact = false, scale = 1,
     if (!data) return null;
 
     return (
-        <div ref={containerRef} className={`w-[210mm] bg-white text-black mx-auto min-h-[297mm] overflow-visible font-serif leading-tight shadow-none print:shadow-none print:w-[210mm] relative ${isCompact ? 'p-5 print:py-0 max-w-[210mm]' : 'p-8 print:py-0 max-w-[210mm]'}`}>
+        <div ref={containerRef} className={`w-[210mm] bg-white text-black mx-auto min-h-[297mm] overflow-visible font-serif leading-tight shadow-none print:shadow-none print:w-[210mm] relative ${isCompact ? 'p-5 print:p-5 max-w-[210mm]' : 'p-8 print:p-8 max-w-[210mm]'}`}>
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `calc(100% / ${scale})`, height: `calc(100% / ${scale})` }}>
                 {/* Header */}
                 <div className="text-center border-b-2 border-black pb-5 mb-6">

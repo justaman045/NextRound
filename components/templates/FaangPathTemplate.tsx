@@ -31,7 +31,7 @@ export default function FaangPathTemplate({ data, isCompact = false, scale = 1, 
     return (
         <div
             ref={containerRef}
-            className={`bg-white text-black mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative font-serif ${isCompact ? 'p-8 print:py-0 max-w-[210mm]' : 'p-10 print:py-0 max-w-[210mm]'}`}
+            className={`bg-white text-black mx-auto min-h-[297mm] w-[210mm] overflow-visible shadow-none print:shadow-none print:w-[210mm] relative font-serif ${isCompact ? 'p-8 print:p-8 max-w-[210mm]' : 'p-10 print:p-10 max-w-[210mm]'}`}
             style={{ fontFamily: '"Times New Roman", Times, serif' }}
         >
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `calc(100% / ${scale})`, height: `calc(100% / ${scale})` }}>

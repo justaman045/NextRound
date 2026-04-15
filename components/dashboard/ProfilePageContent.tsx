@@ -114,8 +114,13 @@ export default function DashboardPage() {
                 }
             }
         };
-        fetchData();
-    }, [user]);
+
+        if (user) {
+            fetchData();
+        } else if (!authLoading) {
+            setLoadingData(false);
+        }
+    }, [user, authLoading]);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -187,7 +192,7 @@ export default function DashboardPage() {
                     <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px]" />
                 </div>
 
-                <div className="relative z-10 p-4 md:p-10 max-w-7xl mx-auto pb-20">
+                <div className="relative z-10 p-4 md:p-10 max-w-[1400px] mx-auto pb-20">
                     {activeTab === "overview" && <Overview profile={profile} stats={stats} recentResumes={recentResumes} subscription={subscription} onNavigate={(tab) => handleTabChange(tab as Tab)} />}
                     {activeTab === "social" && <SocialProfile profile={profile} subscription={subscription} onUpdate={refreshProfile} />}
                     {activeTab === "profile" && (
