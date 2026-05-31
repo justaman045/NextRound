@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NextRound — AI Resume Builder
+
+> **AI-powered resume builder with ATS scoring, LaTeX compilation, and multi-template support.** Tailor resumes to job descriptions, generate cover letters, and export polished PDFs.
+
+[![Next.js](https://img.shields.io/badge/Next.js_15-000000?logo=next.js)](https://nextjs.org)
+[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-FF6B6B)](https://openrouter.ai)
+[![Razorpay](https://img.shields.io/badge/Razorpay-02042B?logo=razorpay)](https://razorpay.com)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+
+---
+
+## Features
+
+- **AI Resume Tailoring** — Paste a job description; AI rewrites your resume for maximum ATS match score
+- **ATS Scoring** — Get a detailed 0-100 match score with analysis of keyword coverage and role relevance
+- **Multi-Model AI** — Choose from any free OpenRouter model; auto-fallback to `openrouter/free`
+- **LaTeX Templates** — Professional LaTeX templates with Handlebars variable injection
+- **Template Builder** — Admin panel to upload, convert, and manage LaTeX → Handlebars templates
+- **Cover Letter Generation** — AI-generated cover letters tailored to specific roles
+- **GitHub Integration** — Import projects and contributions directly from GitHub
+- **LinkedIn Import** — Pull profile data from LinkedIn
+- **DOCX Export** — Export resumes as Word documents
+- **Razorpay Billing** — Subscription plans for premium features
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 15 (App Router, TypeScript) |
+| Database | Firebase Firestore |
+| Auth | Firebase Authentication |
+| AI | OpenRouter (model-agnostic — GPT-4o, Claude, Gemini, etc.) |
+| LaTeX | Handlebars → latexonline.cc → PDF |
+| Payments | Razorpay |
+| Export | DOCX generation |
+| Hosting | Vercel |
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Clone
+git clone https://github.com/justaman045/NextRound.git
+cd NextRound
+
+# Install
+npm install
+
+# Set up environment
+cp .env.example .env.local
+# Fill in Firebase config, OpenRouter API key, Razorpay keys
+
+# Run dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_FIREBASE_*` | Firebase client SDK config |
+| `FIREBASE_SERVICE_ACCOUNT` | Firebase Admin SDK key (JSON) |
+| `OPENROUTER_API_KEY` | OpenRouter API key for AI features |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Razorpay payment gateway |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Key Routes
 
-## Learn More
+| Route | Purpose |
+|-------|---------|
+| `/` | Resume builder dashboard |
+| `/tailor` | AI tailoring + ATS scoring |
+| `/preview` | Resume preview + PDF export |
+| `/admin` | Template management, users, integrations |
+| `/api/ai/evaluate-ats` | ATS score evaluation API |
+| `/api/compile` | LaTeX → PDF compilation API |
+| `/api/export/docx` | DOCX export API |
 
-To learn more about Next.js, take a look at the following resources:
+## LaTeX Pipeline
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+LaTeX source → OpenRouter AI → Handlebars template → .tar.gz → latexonline.cc → PDF
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For detailed Razorpay setup, see [RAZORPAY_SETUP.md](./RAZORPAY_SETUP.md).
