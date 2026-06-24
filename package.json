@@ -12,7 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.36.0",
+    "@sentry/nextjs": "^10.58.0",
     "@tailwindcss/typography": "^0.5.19",
     "archiver": "^7.0.1",
     "docx": "^9.6.1",
@@ -23,7 +23,7 @@
     "next": "16.1.4",
     "openai": "^6.34.0",
     "pdf-parse": "^2.4.5",
-    "posthog-js": "^1.334.1",
+    "posthog-js": "^1.388.2",
     "puppeteer": "^24.41.0",
     "razorpay": "^2.9.6",
     "react": "19.2.3",
